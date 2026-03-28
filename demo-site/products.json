@@ -1,0 +1,82 @@
+[
+  {
+    "id": 1,
+    "name": "MacBook Pro 16\"",
+    "category": "Laptops",
+    "price": 2499,
+    "description": "Powerful laptop for professionals",
+    "image": "📱"
+  },
+  {
+    "id": 2,
+    "name": "Dell XPS 13",
+    "category": "Laptops",
+    "price": 1299,
+    "description": "Compact and lightweight laptop",
+    "image": "💻"
+  },
+  {
+    "id": 3,
+    "name": "iPhone 15 Pro",
+    "category": "Smartphones",
+    "price": 999,
+    "description": "Latest Apple smartphone",
+    "image": "📱"
+  },
+  {
+    "id": 4,
+    "name": "Samsung Galaxy S24",
+    "category": "Smartphones",
+    "price": 899,
+    "description": "Premium Android smartphone",
+    "image": "📱"
+  },
+  {
+    "id": 5,
+    "name": "iPad Air 11\"",
+    "category": "Laptops",
+    "price": 799,
+    "description": "Versatile tablet for work and play",
+    "image": "📱"
+  },
+  {
+    "id": 6,
+    "name": "AirPods Pro",
+    "category": "Accessories",
+    "price": 249,
+    "description": "Premium wireless earbuds",
+    "image": "🎧"
+  },
+  {
+    "id": 7,
+    "name": "Magic Mouse",
+    "category": "Accessories",
+    "price": 79,
+    "description": "Wireless mouse for Mac",
+    "image": "🖱️"
+  },
+  {
+    "id": 8,
+    "name": "USB-C Hub",
+    "category": "Accessories",
+    "price": 49,
+    "description": "Multi-port USB-C adapter",
+    "image": "🔌"
+  },
+  {
+    "id": 9,
+    "name": "Sony WH-1000XM5",
+    "category": "Accessories",
+    "price": 349,
+    "description": "Noise-cancelling headphones",
+    "image": "🎧"
+  },
+  {
+    "id": 10,
+    "name": "Samsung Monitor 27\"",
+    "category": "Laptops",
+    "price": 299,
+    "description": "4K display monitor",
+    "image": "🖥️"
+  }
+]

@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TechStore - Welcome</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div id="app">
+        <nav class="navbar">
+            <div class="nav-container">
+                <div class="nav-brand">
+                    <h1>🛍️ TechStore</h1>
+                </div>
+                <ul class="nav-menu">
+                    <li><a href="index.html" class="active">Home</a></li>
+                    <li><a href="products.html">Products</a></li>
+                    <li>
+                        <a href="#" id="cartLink">Cart <span id="cartCount">0</span></a>
+                    </li>
+                    <li><a href="#" id="logoutBtn" style="display:none;">Logout</a></li>
+                    <li><a href="login.html" id="loginLink">Login</a></li>
+                </ul>
+            </div>
+        </nav>
+
+        <section class="hero">
+            <div class="hero-content">
+                <h2>Welcome to TechStore</h2>
+                <p>Discover the latest and greatest technology products</p>
+                <a href="products.html" class="btn btn-primary">Shop Now</a>
+            </div>
+        </section>
+
+        <section class="features">
+            <div class="features-container">
+                <div class="feature-card">
+                    <h3>📦 Free Shipping</h3>
+                    <p>On orders over $50</p>
+                </div>
+                <div class="feature-card">
+                    <h3>🔒 Secure Payment</h3>
+                    <p>100% secure transactions</p>
+                </div>
+                <div class="feature-card">
+                    <h3>💼 Expert Support</h3>
+                    <p>24/7 customer support</p>
+                </div>
+                <div class="feature-card">
+                    <h3>↩️ Easy Returns</h3>
+                    <p>30-day money back guarantee</p>
+                </div>
+            </div>
+        </section>
+
+        <section class="popular-products">
+            <h2>Popular Products</h2>
+            <div id="popularProductsContainer" class="products-grid">
+                <!-- Populated by JavaScript -->
+            </div>
+        </section>
+
+        <footer>
+            <p>&copy; 2026 TechStore. All rights reserved.</p>
+        </footer>
+    </div>
+
+    <!-- Modal for Quick Add to Cart -->
+    <div id="cartModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>Cart</h2>
+            <div id="cartItems"></div>
+            <div class="modal-footer">
+                <p>Total: $<span id="cartTotal">0.00</span></p>
+                <button class="btn btn-primary">Proceed to Checkout</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
