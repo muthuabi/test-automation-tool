@@ -185,7 +185,7 @@ export default function Dashboard() {
                 </TableHead>
                 <TableBody>
                   {recentResults.map((result) => (
-                    <TableRow key={result.id} hover>
+                    <TableRow key={result._id} hover>
                       <TableCell>{result.scenarioName}</TableCell>
                       <TableCell>
                         <Chip

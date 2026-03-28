@@ -64,7 +64,7 @@ export default function Functions() {
         description: func.description,
         code: func.code,
       });
-      setEditingId(func.id);
+      setEditingId(func._id);
     } else {
       setFormData({
         name: '',
@@ -105,7 +105,7 @@ export default function Functions() {
     try {
       if (editingId) {
         await apiCalls.updateFunction(editingId, formData);
-        setFunctions(functions.map(f => f.id === editingId ? { ...f, ...formData } : f));
+        setFunctions(functions.map(f => f._id === editingId ? { ...f, ...formData } : f));
       } else {
         const newFunction = await apiCalls.addFunction(formData);
         setFunctions([...functions, newFunction]);
@@ -121,7 +121,7 @@ export default function Functions() {
     if (window.confirm('Are you sure you want to delete this function?')) {
       try {
         await apiCalls.deleteFunction(id);
-        setFunctions(functions.filter(f => f.id !== id));
+        setFunctions(functions.filter(f => f._id !== id));
       } catch (error) {
         console.error('Error deleting function:', error);
         alert('Failed to delete function');
@@ -198,7 +198,7 @@ export default function Functions() {
                 </TableRow>
               ) : (
                 functions.map((func) => (
-                  <TableRow key={func.id} hover>
+                  <TableRow key={func._id} hover>
                     <TableCell sx={{ fontWeight: 'bold' }}>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                         <CodeIcon sx={{ fontSize: 20, color: '#667eea' }} />
@@ -217,7 +217,7 @@ export default function Functions() {
                       </IconButton>
                       <IconButton
                         size="small"
-                        onClick={() => handleDelete(func.id)}
+                        onClick={() => handleDelete(func._id)}
                         color="error"
                       >
                         <DeleteIcon fontSize="small" />

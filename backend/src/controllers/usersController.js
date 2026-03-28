@@ -1,4 +1,5 @@
 const User = require('../models/usersModel');
+const { validateAndConvertId } = require('../utils/idValidator');
 
 exports.getUsers = async (req, res) => {
   try {
@@ -11,7 +12,15 @@ exports.getUsers = async (req, res) => {
 
 exports.getUserById = async (req, res) => {
   try {
-    const user = await User.findById(req.params.id);
+    const { id } = req.params;
+    
+    try {
+      validateAndConvertId(id, 'User ID');
+    } catch (validationError) {
+      return res.status(400).json({ error: validationError.message });
+    }
+
+    const user = await User.findById(id);
     if (!user) return res.status(404).json({ error: 'User not found' });
     res.json(user);
   } catch (error) {
@@ -31,7 +40,15 @@ exports.createUser = async (req, res) => {
 
 exports.updateUser = async (req, res) => {
   try {
-    const user = await User.findByIdAndUpdate(req.params.id, req.body, {
+    const { id } = req.params;
+    
+    try {
+      validateAndConvertId(id, 'User ID');
+    } catch (validationError) {
+      return res.status(400).json({ error: validationError.message });
+    }
+
+    const user = await User.findByIdAndUpdate(id, req.body, {
       new: true,
       runValidators: true,
     });
@@ -44,7 +61,15 @@ exports.updateUser = async (req, res) => {
 
 exports.deleteUser = async (req, res) => {
   try {
-    const user = await User.findByIdAndDelete(req.params.id);
+    const { id } = req.params;
+    
+    try {
+      validateAndConvertId(id, 'User ID');
+    } catch (validationError) {
+      return res.status(400).json({ error: validationError.message });
+    }
+
+    const user = await User.findByIdAndDelete(id);
     if (!user) return res.status(404).json({ error: 'User not found' });
     res.json({ message: 'User deleted successfully', user });
   } catch (error) {

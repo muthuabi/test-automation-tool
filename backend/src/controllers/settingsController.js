@@ -1,4 +1,5 @@
 const Settings = require('../models/settingsModel');
+const { validateAndConvertId } = require('../utils/idValidator');
 
 exports.getSettings = async (req, res) => {
   try {
@@ -46,7 +47,15 @@ exports.updateSetting = async (req, res) => {
 
 exports.updateSettingById = async (req, res) => {
   try {
-    const setting = await Settings.findByIdAndUpdate(req.params.id, req.body, {
+    const { id } = req.params;
+    
+    try {
+      validateAndConvertId(id, 'Settings ID');
+    } catch (validationError) {
+      return res.status(400).json({ error: validationError.message });
+    }
+
+    const setting = await Settings.findByIdAndUpdate(id, req.body, {
       new: true,
       runValidators: true,
     });
@@ -69,7 +78,15 @@ exports.createSetting = async (req, res) => {
 
 exports.deleteSetting = async (req, res) => {
   try {
-    const setting = await Settings.findByIdAndDelete(req.params.id);
+    const { id } = req.params;
+    
+    try {
+      validateAndConvertId(id, 'Settings ID');
+    } catch (validationError) {
+      return res.status(400).json({ error: validationError.message });
+    }
+
+    const setting = await Settings.findByIdAndDelete(id);
     if (!setting) return res.status(404).json({ error: 'Setting not found' });
     res.json({ message: 'Setting deleted successfully', setting });
   } catch (error) {

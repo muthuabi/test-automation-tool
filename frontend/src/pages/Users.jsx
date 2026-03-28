@@ -64,7 +64,7 @@ export default function Users() {
         role: user.role,
         status: user.status,
       });
-      setEditingId(user.id);
+      setEditingId(user._id);
     } else {
       setFormData({
         email: '',
@@ -90,7 +90,7 @@ export default function Users() {
     try {
       if (editingId) {
         await apiCalls.updateUser(editingId, formData);
-        setUsers(users.map(u => u.id === editingId ? { ...u, ...formData } : u));
+        setUsers(users.map(u => u._id === editingId ? { ...u, ...formData } : u));
       } else {
         const newUser = await apiCalls.addUser(formData);
         setUsers([...users, newUser]);
@@ -106,7 +106,7 @@ export default function Users() {
     if (window.confirm('Are you sure you want to delete this user?')) {
       try {
         await apiCalls.deleteUser(id);
-        setUsers(users.filter(u => u.id !== id));
+        setUsers(users.filter(u => u._id !== id));
       } catch (error) {
         console.error('Error deleting user:', error);
         alert('Failed to delete user');
@@ -166,7 +166,7 @@ export default function Users() {
                 </TableRow>
               ) : (
                 users.map((user) => (
-                  <TableRow key={user.id} hover>
+                  <TableRow key={user._id} hover>
                     <TableCell>{user.email}</TableCell>
                     <TableCell>{user.role}</TableCell>
                     <TableCell>
@@ -186,7 +186,7 @@ export default function Users() {
                       </IconButton>
                       <IconButton
                         size="small"
-                        onClick={() => handleDelete(user.id)}
+                        onClick={() => handleDelete(user._id)}
                         color="error"
                       >
                         <DeleteIcon fontSize="small" />

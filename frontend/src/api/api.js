@@ -2,7 +2,7 @@ import axios from 'axios';
 import * as mockData from '../mock/mockData';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
-const USE_MOCK_DATA = import.meta.env.VITE_USE_MOCK_DATA !== 'false';
+const USE_MOCK_DATA = import.meta.env.VITE_USE_MOCK_DATA === 'true'; // Default to false (use real API)
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -204,9 +204,35 @@ export const apiCalls = {
   },
 
   // Execution
+  executeRun: async (runId) => {
+    const response = await api.post(`/runs/${runId}/execute`);
+    return response.data;
+  },
+
   executeScenario: async (scenarioId, config) => {
     const response = await api.post(`/execute/${scenarioId}`, config);
     return response.data;
+  },
+
+  // Execution Logs & Results
+  getExecutionLogs: async (runId) => {
+    try {
+      const response = await api.get(`/results/run/${runId}/logs`);
+      return response.data;
+    } catch (error) {
+      console.log('Failed to fetch execution logs', error);
+      return { runId, logs: [], summary: { message: 'No logs available' } };
+    }
+  },
+
+  getExecutionSummary: async (runId) => {
+    try {
+      const response = await api.get(`/results/run/${runId}/summary`);
+      return response.data;
+    } catch (error) {
+      console.log('Failed to fetch execution summary', error);
+      return { runId, executionStatus: 'unknown', functionCount: 0 };
+    }
   },
 };
 

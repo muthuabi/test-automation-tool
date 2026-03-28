@@ -5,6 +5,8 @@ const resultsController = require('../controllers/resultsController');
 router.get('/', resultsController.getResults);
 router.get('/:id', resultsController.getResultById);
 router.get('/run/:runId', resultsController.getResultsByRun);
+router.get('/run/:runId/logs', resultsController.getExecutionLogs);
+router.get('/run/:runId/summary', resultsController.getExecutionSummary);
 router.get('/scenario/:scenarioName', resultsController.getResultsByScenario);
 router.delete('/:id', resultsController.deleteResult);
 

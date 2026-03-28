@@ -1,5 +1,6 @@
 const Run = require('../models/runsModel');
 const Scenario = require('../models/scenariosModel');
+const { validateAndConvertId } = require('../utils/idValidator');
 
 exports.getRuns = async (req, res) => {
   try {
@@ -12,7 +13,16 @@ exports.getRuns = async (req, res) => {
 
 exports.getRunById = async (req, res) => {
   try {
-    const run = await Run.findById(req.params.id).populate('scenarioId').populate('executedBy');
+    const { id } = req.params;
+    
+    // Validate ID format
+    try {
+      validateAndConvertId(id, 'Run ID');
+    } catch (validationError) {
+      return res.status(400).json({ error: validationError.message });
+    }
+
+    const run = await Run.findById(id).populate('scenarioId').populate('executedBy');
     if (!run) return res.status(404).json({ error: 'Run not found' });
     res.json(run);
   } catch (error) {
@@ -23,6 +33,22 @@ exports.getRunById = async (req, res) => {
 exports.createRun = async (req, res) => {
   try {
     const { scenarioId, environment, mode, variables, iterations, executedBy, browserType } = req.body;
+
+    // Validate scenarioId format
+    try {
+      validateAndConvertId(scenarioId, 'Scenario ID');
+    } catch (validationError) {
+      return res.status(400).json({ error: validationError.message });
+    }
+
+    // Validate executedBy if provided
+    if (executedBy) {
+      try {
+        validateAndConvertId(executedBy, 'User ID');
+      } catch (validationError) {
+        return res.status(400).json({ error: validationError.message });
+      }
+    }
 
     const scenario = await Scenario.findById(scenarioId);
     if (!scenario) return res.status(404).json({ error: 'Scenario not found' });
@@ -40,7 +66,8 @@ exports.createRun = async (req, res) => {
     });
 
     const savedRun = await run.save();
-    res.status(201).json(savedRun);
+    const populatedRun = await Run.findById(savedRun._id).populate('scenarioId').populate('executedBy');
+    res.status(201).json(populatedRun);
   } catch (error) {
     res.status(400).json({ error: error.message });
   }
@@ -48,7 +75,26 @@ exports.createRun = async (req, res) => {
 
 exports.updateRun = async (req, res) => {
   try {
-    const run = await Run.findByIdAndUpdate(req.params.id, req.body, {
+    const { id } = req.params;
+    const { scenarioId } = req.body;
+
+    // Validate ID format
+    try {
+      validateAndConvertId(id, 'Run ID');
+    } catch (validationError) {
+      return res.status(400).json({ error: validationError.message });
+    }
+
+    // Validate scenarioId if provided
+    if (scenarioId) {
+      try {
+        validateAndConvertId(scenarioId, 'Scenario ID');
+      } catch (validationError) {
+        return res.status(400).json({ error: validationError.message });
+      }
+    }
+
+    const run = await Run.findByIdAndUpdate(id, req.body, {
       new: true,
       runValidators: true,
     }).populate('scenarioId').populate('executedBy');
@@ -62,7 +108,16 @@ exports.updateRun = async (req, res) => {
 
 exports.deleteRun = async (req, res) => {
   try {
-    const run = await Run.findByIdAndDelete(req.params.id);
+    const { id } = req.params;
+
+    // Validate ID format
+    try {
+      validateAndConvertId(id, 'Run ID');
+    } catch (validationError) {
+      return res.status(400).json({ error: validationError.message });
+    }
+
+    const run = await Run.findByIdAndDelete(id);
     if (!run) return res.status(404).json({ error: 'Run not found' });
     res.json({ message: 'Run deleted successfully', run });
   } catch (error) {

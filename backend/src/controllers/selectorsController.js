@@ -1,4 +1,5 @@
 const Selector = require('../models/selectorsModel');
+const { validateAndConvertId } = require('../utils/idValidator');
 
 exports.getSelectors = async (req, res) => {
   try {
@@ -21,7 +22,15 @@ exports.getSelectorsbyPage = async (req, res) => {
 
 exports.getSelectorById = async (req, res) => {
   try {
-    const selector = await Selector.findById(req.params.id);
+    const { id } = req.params;
+    
+    try {
+      validateAndConvertId(id, 'Selector ID');
+    } catch (validationError) {
+      return res.status(400).json({ error: validationError.message });
+    }
+
+    const selector = await Selector.findById(id);
     if (!selector) return res.status(404).json({ error: 'Selector not found' });
     res.json(selector);
   } catch (error) {
@@ -41,7 +50,15 @@ exports.createSelector = async (req, res) => {
 
 exports.updateSelector = async (req, res) => {
   try {
-    const selector = await Selector.findByIdAndUpdate(req.params.id, req.body, {
+    const { id } = req.params;
+    
+    try {
+      validateAndConvertId(id, 'Selector ID');
+    } catch (validationError) {
+      return res.status(400).json({ error: validationError.message });
+    }
+
+    const selector = await Selector.findByIdAndUpdate(id, req.body, {
       new: true,
       runValidators: true,
     });
@@ -54,7 +71,15 @@ exports.updateSelector = async (req, res) => {
 
 exports.deleteSelector = async (req, res) => {
   try {
-    const selector = await Selector.findByIdAndDelete(req.params.id);
+    const { id } = req.params;
+    
+    try {
+      validateAndConvertId(id, 'Selector ID');
+    } catch (validationError) {
+      return res.status(400).json({ error: validationError.message });
+    }
+
+    const selector = await Selector.findByIdAndDelete(id);
     if (!selector) return res.status(404).json({ error: 'Selector not found' });
     res.json({ message: 'Selector deleted successfully', selector });
   } catch (error) {

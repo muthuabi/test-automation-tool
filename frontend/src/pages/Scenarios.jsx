@@ -77,7 +77,7 @@ export default function Scenarios() {
         description: scenario.description,
         functionIds: [...scenario.functionIds],
       });
-      setEditingId(scenario.id);
+      setEditingId(scenario._id);
     } else {
       setFormData({
         name: '',
@@ -129,7 +129,7 @@ export default function Scenarios() {
 
     try {
       const functionNames = formData.functionIds.map((id) => {
-        const func = functions.find((f) => f.id === id);
+        const func = functions.find((f) => f._id === id);
         return func ? func.name : '';
       });
 
@@ -142,7 +142,7 @@ export default function Scenarios() {
 
       if (editingId) {
         await apiCalls.updateScenario(editingId, dataToSave);
-        setScenarios(scenarios.map(s => s.id === editingId ? { ...s, ...dataToSave } : s));
+        setScenarios(scenarios.map(s => s._id === editingId ? { ...s, ...dataToSave } : s));
       } else {
         const newScenario = await apiCalls.addScenario(dataToSave);
         setScenarios([...scenarios, newScenario]);
@@ -158,7 +158,7 @@ export default function Scenarios() {
     if (window.confirm('Are you sure you want to delete this scenario?')) {
       try {
         await apiCalls.deleteScenario(id);
-        setScenarios(scenarios.filter(s => s.id !== id));
+        setScenarios(scenarios.filter(s => s._id !== id));
       } catch (error) {
         console.error('Error deleting scenario:', error);
         alert('Failed to delete scenario');
@@ -167,12 +167,12 @@ export default function Scenarios() {
   };
 
   const selectedFunctionNames = formData.functionIds.map((id) => {
-    const func = functions.find((f) => f.id === id);
+    const func = functions.find((f) => f._id === id);
     return func ? func.name : '';
   });
 
   const availableFunctions = functions.filter(
-    (f) => !formData.functionIds.includes(f.id)
+    (f) => !formData.functionIds.includes(f._id)
   );
 
   return (
@@ -225,7 +225,7 @@ export default function Scenarios() {
                 </TableRow>
               ) : (
                 scenarios.map((scenario) => (
-                  <TableRow key={scenario.id} hover>
+                  <TableRow key={scenario._id} hover>
                     <TableCell sx={{ fontWeight: 'bold' }}>{scenario.name}</TableCell>
                     <TableCell>
                       <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
@@ -258,7 +258,7 @@ export default function Scenarios() {
                       </IconButton>
                       <IconButton
                         size="small"
-                        onClick={() => handleDelete(scenario.id)}
+                        onClick={() => handleDelete(scenario._id)}
                         color="error"
                       >
                         <DeleteIcon fontSize="small" />
@@ -305,7 +305,7 @@ export default function Scenarios() {
             <Paper sx={{ backgroundColor: '#f9f9f9', mb: 2 }}>
               <List dense>
                 {formData.functionIds.map((funcId, index) => {
-                  const func = functions.find((f) => f.id === funcId);
+                  const func = functions.find((f) => f._id === funcId);
                   return (
                     <ListItem
                       key={index}
@@ -373,7 +373,7 @@ export default function Scenarios() {
               >
                 <MenuItem value="">-- Select a function --</MenuItem>
                 {availableFunctions.map((func) => (
-                  <MenuItem key={func.id} value={func.id}>
+                  <MenuItem key={func._id} value={func._id}>
                     {func.name}
                   </MenuItem>
                 ))}

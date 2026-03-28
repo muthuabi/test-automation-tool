@@ -1,5 +1,6 @@
 const Scenario = require('../models/scenariosModel');
 const Function = require('../models/functionsModel');
+const { validateAndConvertId, validateAndConvertIds } = require('../utils/idValidator');
 
 exports.getScenarios = async (req, res) => {
   try {
@@ -12,7 +13,16 @@ exports.getScenarios = async (req, res) => {
 
 exports.getScenarioById = async (req, res) => {
   try {
-    const scenario = await Scenario.findById(req.params.id).populate('functionIds').populate('owner');
+    const { id } = req.params;
+
+    // Validate ID format
+    try {
+      validateAndConvertId(id, 'Scenario ID');
+    } catch (validationError) {
+      return res.status(400).json({ error: validationError.message });
+    }
+
+    const scenario = await Scenario.findById(id).populate('functionIds').populate('owner');
     if (!scenario) return res.status(404).json({ error: 'Scenario not found' });
     res.json(scenario);
   } catch (error) {
@@ -23,6 +33,24 @@ exports.getScenarioById = async (req, res) => {
 exports.createScenario = async (req, res) => {
   try {
     const { name, description, functionIds, tags, owner } = req.body;
+
+    // Validate functionIds format
+    if (functionIds && functionIds.length > 0) {
+      try {
+        validateAndConvertIds(functionIds, 'Function IDs');
+      } catch (validationError) {
+        return res.status(400).json({ error: validationError.message });
+      }
+    }
+
+    // Validate owner if provided
+    if (owner) {
+      try {
+        validateAndConvertId(owner, 'Owner ID');
+      } catch (validationError) {
+        return res.status(400).json({ error: validationError.message });
+      }
+    }
 
     // Fetch function names from IDs
     const functions = await Function.find({ _id: { $in: functionIds } });
@@ -38,7 +66,8 @@ exports.createScenario = async (req, res) => {
     });
 
     const savedScenario = await scenario.save();
-    res.status(201).json(savedScenario);
+    const populatedScenario = await Scenario.findById(savedScenario._id).populate('functionIds').populate('owner');
+    res.status(201).json(populatedScenario);
   } catch (error) {
     res.status(400).json({ error: error.message });
   }
@@ -46,9 +75,34 @@ exports.createScenario = async (req, res) => {
 
 exports.updateScenario = async (req, res) => {
   try {
-    const { functionIds } = req.body;
+    const { id } = req.params;
+    const { functionIds, owner } = req.body;
 
-    // If functionIds are being updated, fetch new names
+    // Validate ID format
+    try {
+      validateAndConvertId(id, 'Scenario ID');
+    } catch (validationError) {
+      return res.status(400).json({ error: validationError.message });
+    }
+
+    // Validate functionIds if provided
+    if (functionIds && functionIds.length > 0) {
+      try {
+        validateAndConvertIds(functionIds, 'Function IDs');
+      } catch (validationError) {
+        return res.status(400).json({ error: validationError.message });
+      }
+    }
+
+    // Validate owner if provided
+    if (owner) {
+      try {
+        validateAndConvertId(owner, 'Owner ID');
+      } catch (validationError) {
+        return res.status(400).json({ error: validationError.message });
+      }
+    }
+
     let updateData = { ...req.body };
     if (functionIds) {
       const functions = await Function.find({ _id: { $in: functionIds } });
@@ -56,7 +110,7 @@ exports.updateScenario = async (req, res) => {
       updateData.functionNames = functionNames;
     }
 
-    const scenario = await Scenario.findByIdAndUpdate(req.params.id, updateData, {
+    const scenario = await Scenario.findByIdAndUpdate(id, updateData, {
       new: true,
       runValidators: true,
     }).populate('functionIds').populate('owner');
@@ -70,7 +124,16 @@ exports.updateScenario = async (req, res) => {
 
 exports.deleteScenario = async (req, res) => {
   try {
-    const scenario = await Scenario.findByIdAndDelete(req.params.id);
+    const { id } = req.params;
+
+    // Validate ID format
+    try {
+      validateAndConvertId(id, 'Scenario ID');
+    } catch (validationError) {
+      return res.status(400).json({ error: validationError.message });
+    }
+
+    const scenario = await Scenario.findByIdAndDelete(id);
     if (!scenario) return res.status(404).json({ error: 'Scenario not found' });
     res.json({ message: 'Scenario deleted successfully', scenario });
   } catch (error) {

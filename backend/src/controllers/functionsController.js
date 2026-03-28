@@ -1,4 +1,5 @@
 const Function = require('../models/functionsModel');
+const { validateAndConvertId } = require('../utils/idValidator');
 
 exports.getFunctions = async (req, res) => {
   try {
@@ -11,7 +12,15 @@ exports.getFunctions = async (req, res) => {
 
 exports.getFunctionById = async (req, res) => {
   try {
-    const func = await Function.findById(req.params.id);
+    const { id } = req.params;
+    
+    try {
+      validateAndConvertId(id, 'Function ID');
+    } catch (validationError) {
+      return res.status(400).json({ error: validationError.message });
+    }
+
+    const func = await Function.findById(id);
     if (!func) return res.status(404).json({ error: 'Function not found' });
     res.json(func);
   } catch (error) {
@@ -31,7 +40,15 @@ exports.createFunction = async (req, res) => {
 
 exports.updateFunction = async (req, res) => {
   try {
-    const func = await Function.findByIdAndUpdate(req.params.id, req.body, {
+    const { id } = req.params;
+    
+    try {
+      validateAndConvertId(id, 'Function ID');
+    } catch (validationError) {
+      return res.status(400).json({ error: validationError.message });
+    }
+
+    const func = await Function.findByIdAndUpdate(id, req.body, {
       new: true,
       runValidators: true,
     });
@@ -44,7 +61,15 @@ exports.updateFunction = async (req, res) => {
 
 exports.deleteFunction = async (req, res) => {
   try {
-    const func = await Function.findByIdAndDelete(req.params.id);
+    const { id } = req.params;
+    
+    try {
+      validateAndConvertId(id, 'Function ID');
+    } catch (validationError) {
+      return res.status(400).json({ error: validationError.message });
+    }
+
+    const func = await Function.findByIdAndDelete(id);
     if (!func) return res.status(404).json({ error: 'Function not found' });
     res.json({ message: 'Function deleted successfully', func });
   } catch (error) {
@@ -56,6 +81,12 @@ exports.testFunction = async (req, res) => {
   try {
     const { id } = req.params;
     const { vars, selectors } = req.body;
+
+    try {
+      validateAndConvertId(id, 'Function ID');
+    } catch (validationError) {
+      return res.status(400).json({ error: validationError.message });
+    }
 
     const func = await Function.findById(id);
     if (!func) return res.status(404).json({ error: 'Function not found' });

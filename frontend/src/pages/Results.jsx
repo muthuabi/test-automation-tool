@@ -39,6 +39,8 @@ export default function Results() {
   const [loading, setLoading] = useState(false);
   const [selectedResult, setSelectedResult] = useState(null);
   const [openDetailsDialog, setOpenDetailsDialog] = useState(false);
+  const [executionLogs, setExecutionLogs] = useState(null);
+  const [logsLoading, setLogsLoading] = useState(false);
 
   useEffect(() => {
     loadResults();
@@ -72,7 +74,7 @@ export default function Results() {
     const url = URL.createObjectURL(dataBlob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `result-${result.id}.json`;
+    link.download = `result-${result._id}.json`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -82,7 +84,7 @@ export default function Results() {
   const handleDelete = async (id) => {
     if (window.confirm('Are you sure you want to delete this result?')) {
       try {
-        setResults(results.filter(r => r.id !== id));
+        setResults(results.filter(r => r._id !== id));
       } catch (error) {
         console.error('Error deleting result:', error);
         alert('Failed to delete result');
@@ -136,7 +138,7 @@ export default function Results() {
                 </TableRow>
               ) : (
                 results.map((result) => (
-                  <TableRow key={result.id} hover>
+                  <TableRow key={result._id} hover>
                     <TableCell sx={{ fontWeight: 'bold' }}>{result.scenarioName}</TableCell>
                     <TableCell>
                       <Chip

@@ -61,7 +61,7 @@ export default function Selectors() {
         page: selector.page,
         description: selector.description,
       });
-      setEditingId(selector.id);
+      setEditingId(selector._id);
     } else {
       setFormData({
         name: '',
@@ -88,7 +88,7 @@ export default function Selectors() {
     try {
       if (editingId) {
         await apiCalls.updateSelector(editingId, formData);
-        setSelectors(selectors.map(s => s.id === editingId ? { ...s, ...formData } : s));
+        setSelectors(selectors.map(s => s._id === editingId ? { ...s, ...formData } : s));
       } else {
         const newSelector = await apiCalls.addSelector(formData);
         setSelectors([...selectors, newSelector]);
@@ -104,7 +104,7 @@ export default function Selectors() {
     if (window.confirm('Are you sure you want to delete this selector?')) {
       try {
         await apiCalls.deleteSelector(id);
-        setSelectors(selectors.filter(s => s.id !== id));
+        setSelectors(selectors.filter(s => s._id !== id));
       } catch (error) {
         console.error('Error deleting selector:', error);
         alert('Failed to delete selector');
@@ -162,7 +162,7 @@ export default function Selectors() {
                 </TableRow>
               ) : (
                 selectors.map((selector) => (
-                  <TableRow key={selector.id} hover>
+                  <TableRow key={selector._id} hover>
                     <TableCell sx={{ fontWeight: 'bold', color: '#667eea' }}>
                       {selector.name}
                     </TableCell>
@@ -181,7 +181,7 @@ export default function Selectors() {
                       </IconButton>
                       <IconButton
                         size="small"
-                        onClick={() => handleDelete(selector.id)}
+                        onClick={() => handleDelete(selector._id)}
                         color="error"
                       >
                         <DeleteIcon fontSize="small" />

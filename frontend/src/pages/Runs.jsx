@@ -80,15 +80,17 @@ export default function Runs() {
 
   const handleOpenDialog = (run = null) => {
     if (run) {
+      // Handle both cases: scenarioId as object (populated) or string (ID)
+      const scenarioId = typeof run.scenarioId === 'object' ? run.scenarioId._id : run.scenarioId;
       setFormData({
-        scenarioId: run.scenarioId,
+        scenarioId: scenarioId,
         userIds: run.userIds || [],
         environment: run.environment,
-        runMode: run.runMode,
-        runCount: run.runCount,
-        runtimeVars: run.runtimeVars || formData.runtimeVars,
+        runMode: run.mode || run.runMode,
+        runCount: run.iterations || run.runCount,
+        runtimeVars: run.variables || run.runtimeVars || formData.runtimeVars,
       });
-      setEditingId(run.id);
+      setEditingId(run._id);
     } else {
       setFormData({
         scenarioId: '',
@@ -120,16 +122,20 @@ export default function Runs() {
     }
 
     try {
-      const scenario = scenarios.find((s) => s.id === parseInt(formData.scenarioId));
+      const scenario = scenarios.find((s) => s._id === formData.scenarioId);
+      // Map form field names to backend field names
       const dataToSave = {
-        ...formData,
-        scenarioId: parseInt(formData.scenarioId),
+        scenarioId: formData.scenarioId,
         scenarioName: scenario?.name,
+        environment: formData.environment,
+        mode: formData.runMode,
+        iterations: formData.runCount,
+        variables: formData.runtimeVars,
       };
 
       if (editingId) {
         await apiCalls.updateRun(editingId, dataToSave);
-        setRuns(runs.map(r => r.id === editingId ? { ...r, ...dataToSave } : r));
+        setRuns(runs.map(r => r._id === editingId ? { ...r, ...dataToSave } : r));
       } else {
         const newRun = await apiCalls.addRun(dataToSave);
         setRuns([...runs, newRun]);
@@ -137,7 +143,7 @@ export default function Runs() {
       handleCloseDialog();
     } catch (error) {
       console.error('Error saving run:', error);
-      alert('Failed to save run');
+      alert('Failed to save run: ' + (error.response?.data?.error || error.message));
     }
   };
 
@@ -145,7 +151,7 @@ export default function Runs() {
     if (window.confirm('Are you sure you want to delete this run?')) {
       try {
         await apiCalls.deleteRun(id);
-        setRuns(runs.filter(r => r.id !== id));
+        setRuns(runs.filter(r => r._id !== id));
       } catch (error) {
         console.error('Error deleting run:', error);
         alert('Failed to delete run');
@@ -154,17 +160,19 @@ export default function Runs() {
   };
 
   const handleExecute = async (runId) => {
-    const run = runs.find(r => r.id === runId);
+    const run = runs.find(r => r._id === runId);
     if (!run) return;
 
     try {
-      alert(
-        `Executing scenario: ${run.scenarioName}\nMode: ${run.runMode}\nEnvironment: ${run.environment}\n\nThis would send the request to the backend in a live environment.`
-      );
-      // In a real app, you would call: await apiCalls.executeScenario(runId, run);
+      // Call the execute endpoint
+      await apiCalls.executeRun(runId);
+      alert(`Executing scenario: ${run.scenarioName}\nMode: ${run.mode}\nEnvironment: ${run.environment}\n\nTest execution started in the background. Check the Results tab for logs.`);
+      
+      // Refresh runs to update status
+      loadData();
     } catch (error) {
       console.error('Error executing run:', error);
-      alert('Failed to execute run');
+      alert('Failed to execute run: ' + (error.response?.data?.error || error.message));
     }
   };
 
@@ -224,28 +232,30 @@ export default function Runs() {
                 </TableRow>
               ) : (
                 runs.map((run) => (
-                  <TableRow key={run.id} hover>
+                  <TableRow key={run._id} hover>
                     <TableCell sx={{ fontWeight: 'bold' }}>{run.scenarioName}</TableCell>
                     <TableCell>
                       <Chip label={run.environment} size="small" color="primary" variant="outlined" />
                     </TableCell>
                     <TableCell>
                       <Chip
-                        label={run.runMode}
+                        label={run.mode || run.runMode}
                         size="small"
-                        color={run.runMode === 'headless' ? 'success' : 'warning'}
+                        color={(run.mode || run.runMode) === 'headless' ? 'success' : 'warning'}
                         variant="outlined"
                       />
                     </TableCell>
-                    <TableCell>{run.runCount}x</TableCell>
+                    <TableCell>{(run.iterations || run.runCount || 1)}x</TableCell>
                     <TableCell>
                       <Chip
-                        label={run.status}
+                        label={run.status || 'pending'}
                         color={
-                          run.status === 'Completed'
+                          (run.status || '').toLowerCase() === 'completed'
                             ? 'success'
-                            : run.status === 'In Progress'
+                            : (run.status || '').toLowerCase() === 'running' || (run.status || '').toLowerCase() === 'in progress'
                             ? 'warning'
+                            : (run.status || '').toLowerCase() === 'failed'
+                            ? 'error'
                             : 'default'
                         }
                         size="small"
@@ -254,9 +264,10 @@ export default function Runs() {
                     <TableCell sx={{ textAlign: 'right' }}>
                       <IconButton
                         size="small"
-                        onClick={() => handleExecute(run.id)}
+                        onClick={() => handleExecute(run._id)}
                         color="success"
                         title="Execute"
+                        disabled={run.status === 'running'}
                       >
                         <PlayArrowIcon fontSize="small" />
                       </IconButton>
@@ -269,7 +280,7 @@ export default function Runs() {
                       </IconButton>
                       <IconButton
                         size="small"
-                        onClick={() => handleDelete(run.id)}
+                        onClick={() => handleDelete(run._id)}
                         color="error"
                       >
                         <DeleteIcon fontSize="small" />
@@ -300,7 +311,7 @@ export default function Runs() {
                 >
                   <MenuItem value="">-- Select Scenario --</MenuItem>
                   {scenarios.map((scenario) => (
-                    <MenuItem key={scenario.id} value={scenario.id}>
+                    <MenuItem key={scenario._id} value={scenario._id}>
                       {scenario.name}
                     </MenuItem>
                   ))}
