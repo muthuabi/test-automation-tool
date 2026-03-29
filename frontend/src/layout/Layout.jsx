@@ -12,6 +12,7 @@ import {
   Typography,
   Container,
   Divider,
+  alpha,
 } from '@mui/material';
 import {
   Dashboard as DashboardIcon,
@@ -22,8 +23,10 @@ import {
   CheckCircle as CheckCircleIcon,
   Code as CodeIcon,
   AutoFixHigh as AutoFixHighIcon,
+  Extension as ExtensionIcon,
 } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { colors } from '../theme/theme';
 import '../index.css';
 
 const DRAWER_WIDTH = 280;
@@ -36,6 +39,7 @@ const menuItems = [
   { label: 'Scenarios', icon: <AutoFixHighIcon />, path: '/scenarios' },
   { label: 'Runs', icon: <PlayCircleIcon />, path: '/runs' },
   { label: 'Results', icon: <CheckCircleIcon />, path: '/results' },
+  { label: 'Integrations', icon: <ExtensionIcon />, path: '/integrations' },
 ];
 
 const settingsItems = [
@@ -60,14 +64,14 @@ export default function Layout({ children }) {
       <Box
         sx={{
           p: 2,
-          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+          backgroundColor: colors.primary,
           color: 'white',
         }}
       >
         <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 1 }}>
-          🤖 Test Automater
+          Test Automation
         </Typography>
-        <Typography variant="caption">Platform</Typography>
+        <Typography variant="caption">Tool</Typography>
       </Box>
 
       <List sx={{ flex: 1, pt: 2 }}>
@@ -79,19 +83,19 @@ export default function Layout({ children }) {
                 setMobileOpen(false);
               }}
               sx={{
-                backgroundColor: isActive(item.path) ? 'rgba(102, 126, 234, 0.1)' : 'transparent',
-                borderLeft: isActive(item.path) ? '4px solid #667eea' : 'none',
+                backgroundColor: isActive(item.path) ? alpha(colors.primary, 0.1) : 'transparent',
+                borderLeft: isActive(item.path) ? `4px solid ${colors.primary}` : 'none',
                 pl: isActive(item.path) ? '20px' : '24px',
-                color: isActive(item.path) ? '#667eea' : 'inherit',
+                color: isActive(item.path) ? colors.primary : 'inherit',
                 '&:hover': {
-                  backgroundColor: 'rgba(102, 126, 234, 0.05)',
+                  backgroundColor: alpha(colors.primary, 0.05),
                 },
               }}
             >
               <ListItemIcon
                 sx={{
                   minWidth: 40,
-                  color: isActive(item.path) ? '#667eea' : 'inherit',
+                  color: isActive(item.path) ? colors.primary : 'inherit',
                 }}
               >
                 {item.icon}
@@ -112,7 +116,7 @@ export default function Layout({ children }) {
             py: 1,
             display: 'block',
             fontWeight: 'bold',
-            color: '#999',
+            color: colors.textSecondary,
             textTransform: 'uppercase',
           }}
         >
@@ -126,19 +130,19 @@ export default function Layout({ children }) {
                 setMobileOpen(false);
               }}
               sx={{
-                backgroundColor: isActive(item.path) ? 'rgba(102, 126, 234, 0.1)' : 'transparent',
-                borderLeft: isActive(item.path) ? '4px solid #667eea' : 'none',
+                backgroundColor: isActive(item.path) ? alpha(colors.primary, 0.1) : 'transparent',
+                borderLeft: isActive(item.path) ? `4px solid ${colors.primary}` : 'none',
                 pl: isActive(item.path) ? '20px' : '24px',
-                color: isActive(item.path) ? '#667eea' : 'inherit',
+                color: isActive(item.path) ? colors.primary : 'inherit',
                 '&:hover': {
-                  backgroundColor: 'rgba(102, 126, 234, 0.05)',
+                  backgroundColor: alpha(colors.primary, 0.05),
                 },
               }}
             >
               <ListItemIcon
                 sx={{
                   minWidth: 40,
-                  color: isActive(item.path) ? '#667eea' : 'inherit',
+                  color: isActive(item.path) ? colors.primary : 'inherit',
                 }}
               >
                 {item.icon}
@@ -159,12 +163,12 @@ export default function Layout({ children }) {
         sx={{
           width: { xs: '100%', md: `calc(100% - ${DRAWER_WIDTH}px)` },
           ml: { md: `${DRAWER_WIDTH}px` },
-          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+          backgroundColor: colors.primary,
         }}
       >
         <Toolbar>
           <Typography variant="h6" sx={{ flexGrow: 1, fontWeight: 'bold' }}>
-            Test Automater Platform
+            Test Automation Tool
           </Typography>
         </Toolbar>
       </AppBar>

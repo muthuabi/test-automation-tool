@@ -1,14 +1,58 @@
 const playwrightService = require('./playwrightService');
 const functionExecutor = require('./functionExecutor');
 const logger = require('../utils/logger');
+const executionTracker = require('../utils/executionTracker');
 const Run = require('../models/runsModel');
 const Result = require('../models/resultsModel');
 const Scenario = require('../models/scenariosModel');
 const Function = require('../models/functionsModel');
 const Selector = require('../models/selectorsModel');
+const Settings = require('../models/settingsModel');
 const { validateAndConvertId } = require('../utils/idValidator');
+const { execSync } = require('child_process');
+const fs = require('fs');
+const path = require('path');
 
 class ExecutionEngine {
+  /**
+   * Check if Playwright browser drivers are installed
+   */
+  checkPlaywrightDrivers() {
+    const playwrightPath = require.resolve('playwright');
+    const baseDir = path.dirname(playwrightPath);
+    const driversDir = path.join(baseDir, '..');
+    
+    // Check for browser binaries
+    const chromiumPath = path.join(driversDir, '.playwright/chromium');
+    const firefoxPath = path.join(driversDir, '.playwright/firefox');
+    const webkitPath = path.join(driversDir, '.playwright/webkit');
+    
+    return fs.existsSync(chromiumPath) || fs.existsSync(firefoxPath) || fs.existsSync(webkitPath);
+  }
+
+  /**
+   * Auto-install Playwright drivers if missing
+   */
+  async autoInstallPlaywrightDrivers(logs) {
+    try {
+      logs.push('[VALIDATION] Browser drivers not found, attempting auto-install...');
+      logs.push('[VALIDATION] Running: npx playwright install');
+      
+      // Run playwright install with timeout
+      execSync('npx playwright install', {
+        stdio: 'pipe',
+        timeout: 5 * 60 * 1000, // 5 minute timeout
+        cwd: path.join(__dirname, '../../')
+      });
+      
+      logs.push('[VALIDATION] ✓ Playwright drivers installed successfully');
+      return true;
+    } catch (error) {
+      logs.push(`[VALIDATION] ✗ Failed to auto-install drivers: ${error.message}`);
+      return false;
+    }
+  }
+
   /**
    * Pre-execution validation to check system readiness
    */
@@ -24,6 +68,18 @@ class ExecutionEngine {
       } catch (error) {
         logs.push(`[VALIDATION] ✗ Playwright module NOT found: ${error.message}`);
         throw new Error('Playwright is not installed or not accessible');
+      }
+
+      // Check if browser drivers are installed
+      const driversAvailable = this.checkPlaywrightDrivers();
+      if (!driversAvailable) {
+        logs.push('[VALIDATION] ⚠ Browser drivers not found locally');
+        const installSuccess = await this.autoInstallPlaywrightDrivers(logs);
+        if (!installSuccess) {
+          throw new Error('Failed to install Playwright drivers. Please run: npx playwright install');
+        }
+      } else {
+        logs.push('[VALIDATION] ✓ Browser drivers found');
       }
 
       // Check if required browsers are available
@@ -57,85 +113,85 @@ class ExecutionEngine {
     const startTime = Date.now();
     const executionLogs = [];
 
+    // Register execution with tracker
+    const execution = executionTracker.registerExecution(runId);
+
     try {
-      executionLogs.push(`[${new Date().toISOString()}] Starting scenario execution for run: ${runId}`);
+      const logMsg = `Starting scenario execution for run: ${runId}`;
+      executionLogs.push(`[${new Date().toISOString()}] ${logMsg}`);
+      executionTracker.addLog(runId, logMsg, 'info');
 
       // Validate runId format
       try {
         validateAndConvertId(runId, 'Run ID');
-        executionLogs.push('[VALIDATION] Run ID format validated');
+        executionTracker.addLog(runId, 'Run ID format validated', 'info');
       } catch (validationError) {
-        executionLogs.push(`[ERROR] Invalid Run ID: ${validationError.message}`);
+        executionTracker.addLog(runId, `Invalid Run ID: ${validationError.message}`, 'error');
         throw new Error(`Invalid Run ID format: ${validationError.message}`);
       }
 
       // Fetch run data
-      executionLogs.push('[DATABASE] Fetching run configuration from database...');
+      executionTracker.addLog(runId, 'Fetching run configuration from database...', 'info');
       const run = await Run.findById(runId).populate('scenarioId');
       if (!run) {
-        executionLogs.push('[ERROR] Run not found in database');
+        executionTracker.addLog(runId, 'Run not found in database', 'error');
         throw new Error('Run not found');
       }
-      executionLogs.push(`[DATABASE] ✓ Run found: ${run.scenarioName}`);
+      executionTracker.addLog(runId, `✓ Run found: ${run.scenarioName}`, 'info');
 
       const scenario = run.scenarioId;
       if (!scenario) {
-        executionLogs.push('[ERROR] Associated scenario not found');
+        executionTracker.addLog(runId, 'Associated scenario not found', 'error');
         throw new Error('Scenario not found');
       }
-      executionLogs.push(`[SCENARIO] ✓ Scenario loaded: ${scenario.name} with ${scenario.functionIds.length} functions`);
+      executionTracker.addLog(runId, `✓ Scenario loaded: ${scenario.name} with ${scenario.functionIds.length} functions`, 'info');
 
       // System validation
-      executionLogs.push('[SYSTEM] Running pre-execution system validation...');
+      executionTracker.addLog(runId, 'Running pre-execution system validation...', 'info');
       const validation = await this.validateSystemReadiness();
-      executionLogs.push(...validation.logs);
+      validation.logs.forEach(log => executionTracker.addLog(runId, log, 'info'));
       if (!validation.valid) {
         throw new Error(`System validation failed: ${validation.error}`);
       }
 
       // Log configuration
-      executionLogs.push(`\n[CONFIG] Execution Settings:`);
-      executionLogs.push(`  - Browser: ${run.browserType || 'chromium'}`);
-      executionLogs.push(`  - Mode: ${run.mode || 'headless'}`);
-      executionLogs.push(`  - Environment: ${run.environment}`);
-      executionLogs.push(`  - Iterations: ${run.iterations || 1}`);
-      executionLogs.push(`  - Timeout: ${process.env.PLAYWRIGHT_TIMEOUT || 30000}ms`);
-      executionLogs.push(`  - Stop on failure: ${run.stopOnFailure || false}`);
-
-      logger.log(`\n========== STARTING EXECUTION ==========`);
-      logger.log(`Run ID: ${runId}`);
-      logger.log(`Scenario: ${scenario.name}`);
-      logger.log(`Environment: ${run.environment}`);
-      logger.log(`Mode: ${run.mode}`);
-      logger.log(`==========================================\n`);
+      executionTracker.addLog(runId, '\n=== EXECUTION SETTINGS ===', 'info');
+      executionTracker.addLog(runId, `Browser: ${run.browserType || 'chromium'}`, 'info');
+      executionTracker.addLog(runId, `Mode: ${run.mode || 'headless'}`, 'info');
+      executionTracker.addLog(runId, `Environment: ${run.environment}`, 'info');
+      executionTracker.addLog(runId, `Iterations: ${run.iterations || 1}`, 'info');
+      executionTracker.addLog(runId, `Timeout: ${process.env.PLAYWRIGHT_TIMEOUT || 30000}ms`, 'info');
+      executionTracker.addLog(runId, `Stop on failure: ${run.stopOnFailure || false}`, 'info');
+      executionTracker.addLog(runId, '========================\n', 'info');
 
       // Update run status to running
-      executionLogs.push('[DATABASE] Updating run status to "running"...');
+      executionTracker.addLog(runId, 'Updating run status to "running"...', 'info');
       run.status = 'running';
       await run.save();
-      executionLogs.push('[DATABASE] ✓ Run status updated');
+      executionTracker.addLog(runId, '✓ Run status updated', 'info');
 
       // Launch browser and create context
-      executionLogs.push(`[BROWSER] Launching ${run.browserType || 'chromium'} browser...`);
+      const launchMsg = `Launching ${run.browserType || 'chromium'} browser...`;
+      executionTracker.addLog(runId, launchMsg, 'info');
       const browserType = run.browserType || 'chromium';
       try {
         const { context, contextId: cId } = await playwrightService.createContext(browserType, {
           acceptDownloads: true,
         });
         contextId = cId;
-        executionLogs.push(`[BROWSER] ✓ Browser context created (ID: ${contextId})`);
+        executionTracker.addLog(runId, `✓ Browser context created (ID: ${contextId})`, 'info');
       } catch (error) {
-        executionLogs.push(`[BROWSER] ✗ Failed to create browser context: ${error.message}`);
+        executionTracker.addLog(runId, `✗ Failed to create browser context: ${error.message}`, 'error');
         throw new Error(`Browser launch failed: ${error.message}`);
       }
 
       // Create page
-      executionLogs.push('[PAGE] Creating new browser page...');
+      executionTracker.addLog(runId, 'Creating new browser page...', 'info');
       try {
         page = await playwrightService.createPage(contextId);
-        executionLogs.push('[PAGE] ✓ Page created successfully');
+        executionTracker.addLog(runId, '✓ Page created successfully', 'info');
       } catch (error) {
-        executionLogs.push(`[PAGE] ✗ Failed to create page: ${error.message}`);
+        executionTracker.addLog(runId, `✗ Failed to create page: ${error.message}`, 'error');
         throw new Error(`Page creation failed: ${error.message}`);
       }
 
@@ -143,12 +199,12 @@ class ExecutionEngine {
       const timeout = parseInt(process.env.PLAYWRIGHT_TIMEOUT) || 30000;
       page.setDefaultTimeout(timeout);
       page.setDefaultNavigationTimeout(timeout);
-      executionLogs.push(`[PAGE] Timeouts set to ${timeout}ms`);
+      executionTracker.addLog(runId, `Timeouts set to ${timeout}ms`, 'info');
 
       // Get selectors for all pages
-      executionLogs.push('[SELECTORS] Loading selectors from database...');
+      executionTracker.addLog(runId, 'Loading selectors from database...', 'info');
       const allSelectors = await Selector.find();
-      executionLogs.push(`[SELECTORS] ✓ Loaded ${allSelectors.length} selectors`);
+      executionTracker.addLog(runId, `✓ Loaded ${allSelectors.length} selectors`, 'info');
 
       // Execute each function in the scenario
       let functionCount = 0;
@@ -156,28 +212,37 @@ class ExecutionEngine {
       let failedCount = 0;
 
       for (let iteration = 1; iteration <= (run.iterations || 1); iteration++) {
-        executionLogs.push(`\n[ITERATION] Starting iteration ${iteration}/${run.iterations || 1}`);
-        logger.log(`\n--- Iteration ${iteration}/${run.iterations} ---\n`);
+        executionTracker.addLog(runId, `\n--- Starting iteration ${iteration}/${run.iterations || 1} ---\n`, 'info');
+
+        // Check if execution was cancelled
+        if (executionTracker.isCancelled(runId)) {
+          executionTracker.addLog(runId, 'Execution was cancelled by user', 'warning');
+          break;
+        }
 
         for (const functionId of scenario.functionIds) {
+          // Check for cancellation before each function
+          if (executionTracker.isCancelled(runId)) {
+            executionTracker.addLog(runId, 'Execution was cancelled by user', 'warning');
+            break;
+          }
+
           // Validate functionId before querying
           try {
             validateAndConvertId(functionId, 'Function ID');
           } catch (validationError) {
-            executionLogs.push(`[FUNCTION] ✗ Invalid Function ID format: ${functionId}`);
-            logger.error(`Invalid Function ID format: ${functionId}`);
+            executionTracker.addLog(runId, `✗ Invalid Function ID format: ${functionId}`, 'error');
             continue;
           }
 
           const func = await Function.findById(functionId);
           if (!func) {
-            executionLogs.push(`[FUNCTION] ✗ Function not found: ${functionId}`);
-            logger.error(`Function not found: ${functionId}`);
+            executionTracker.addLog(runId, `✗ Function not found: ${functionId}`, 'error');
             continue;
           }
 
           functionCount++;
-          executionLogs.push(`\n[FUNCTION ${functionCount}] Executing: ${func.name}`);
+          executionTracker.addLog(runId, `\n[FUNCTION ${functionCount}] Executing: ${func.name}`, 'info');
           
           const result = await this.executeFunction(
             runId,
@@ -186,49 +251,61 @@ class ExecutionEngine {
             run.variables || {},
             allSelectors,
             iteration,
-            executionLogs
+            executionLogs,
+            executionTracker
           );
 
           if (result.success) {
             passedCount++;
-            executionLogs.push(`[FUNCTION ${functionCount}] ✓ PASSED in ${result.duration}ms`);
+            executionTracker.addLog(runId, `[FUNCTION ${functionCount}] ✓ PASSED in ${result.duration}ms`, 'info');
           } else {
             failedCount++;
-            executionLogs.push(`[FUNCTION ${functionCount}] ✗ FAILED: ${result.message}`);
+            executionTracker.addLog(runId, `[FUNCTION ${functionCount}] ✗ FAILED: ${result.message}`, 'error');
           }
 
           // If a function fails and it's critical, stop execution
           if (!result.success && run.stopOnFailure) {
-            executionLogs.push(`\n[EXECUTION] Stopping execution due to function failure (stopOnFailure enabled)`);
-            logger.error(`\n❌ EXECUTION STOPPED: Function "${func.name}" failed\n`);
+            executionTracker.addLog(runId, `Stopping execution due to function failure (stopOnFailure enabled)`, 'warning');
             break;
           }
+        }
+
+        if (executionTracker.isCancelled(runId)) {
+          break;
         }
       }
 
       // Close browser resources
-      executionLogs.push(`\n[BROWSER] Closing browser and resources...`);
+      executionTracker.addLog(runId, 'Closing browser and resources...', 'info');
       try {
         if (page) await playwrightService.closePage(page);
         if (contextId) await playwrightService.closeContext(contextId);
-        executionLogs.push('[BROWSER] ✓ Browser resources closed');
+        executionTracker.addLog(runId, '✓ Browser resources closed', 'info');
       } catch (error) {
-        executionLogs.push(`[BROWSER] ✗ Error closing resources: ${error.message}`);
+        executionTracker.addLog(runId, `✗ Error closing resources: ${error.message}`, 'error');
       }
 
       // Calculate total duration and update run
       const totalDuration = Date.now() - startTime;
-      run.status = 'completed';
+      const finalStatus = executionTracker.isCancelled(runId) ? 'cancelled' : 'completed';
+      
+      run.status = finalStatus;
       run.totalDuration = totalDuration;
       await run.save();
 
-      executionLogs.push(`\n[SUMMARY] Execution completed successfully`);
-      executionLogs.push(`  - Total duration: ${totalDuration}ms (${(totalDuration / 1000).toFixed(2)}s)`);
-      executionLogs.push(`  - Functions executed: ${functionCount}`);
-      executionLogs.push(`  - Passed: ${passedCount}`);
-      executionLogs.push(`  - Failed: ${failedCount}`);
+      executionTracker.addLog(runId, `\n=== SUMMARY ===`, 'info');
+      executionTracker.addLog(runId, `Execution ${finalStatus}`, 'info');
+      executionTracker.addLog(runId, `Total duration: ${totalDuration}ms (${(totalDuration / 1000).toFixed(2)}s)`, 'info');
+      executionTracker.addLog(runId, `Functions executed: ${functionCount}`, 'info');
+      executionTracker.addLog(runId, `Passed: ${passedCount}`, 'info');
+      executionTracker.addLog(runId, `Failed: ${failedCount}`, 'info');
+      executionTracker.addLog(runId, '================\n', 'info');
 
-      logger.log(`\n========== EXECUTION COMPLETED ==========`);
+      // Mark execution as complete
+      executionTracker.completeExecution(runId, finalStatus);
+
+      logger.log(`\n========== EXECUTION ${finalStatus.toUpperCase()} ==========`);
+      logger.log(`Run ID: ${runId}`);
       logger.log(`Total Duration: ${totalDuration}ms`);
       logger.log(`Passed: ${passedCount}, Failed: ${failedCount}`);
       logger.log(`==========================================\n`);
@@ -238,32 +315,49 @@ class ExecutionEngine {
         runId,
         scenarioName: scenario.name,
         functionName: '[EXECUTION_SUMMARY]',
-        status: failedCount === 0 ? 'passed' : 'failed',
+        status: finalStatus === 'cancelled' ? 'cancelled' : (failedCount === 0 ? 'passed' : 'failed'),
         startTime: new Date(startTime),
         endTime: new Date(),
         duration: totalDuration,
-        logs: executionLogs,
+        logs: executionTracker.getLogs(runId),
         output: {
           functionCount,
           passedCount,
           failedCount,
           totalDuration,
         },
-        error: failedCount > 0 ? `${failedCount} function(s) failed` : null,
+        error: finalStatus === 'cancelled' ? 'Execution was cancelled by user' : (failedCount > 0 ? `${failedCount} function(s) failed` : null),
       });
+
+      // Publish results to integrations (ADO, Email, Workflow)
+      try {
+        await this.publishToIntegrations({
+          runId,
+          scenarioName: scenario.name,
+          functionCount,
+          passedCount,
+          failedCount,
+          totalDuration,
+          executionLogs: executionTracker.getLogs(runId),
+          status: finalStatus === 'cancelled' ? 'cancelled' : (failedCount === 0 ? 'success' : 'failure')
+        });
+      } catch (integrationError) {
+        logger.warn(`Warning: Integration publishing failed: ${integrationError.message}`);
+        // Don't fail execution if integrations fail
+      }
 
       return {
         runId,
-        status: 'completed',
+        status: finalStatus,
         totalDuration,
-        message: 'Scenario executed successfully',
-        logs: executionLogs,
+        message: `Scenario executed successfully (${finalStatus})`,
+        logs: executionTracker.getLogs(runId),
       };
     } catch (error) {
       const totalDuration = Date.now() - startTime;
-      executionLogs.push(`\n[ERROR] Execution failed at ${new Date().toISOString()}`);
-      executionLogs.push(`[ERROR] Error message: ${error.message}`);
-      executionLogs.push(`[ERROR] Stack trace: ${error.stack}`);
+      const errorMsg = `Execution failed at ${new Date().toISOString()}: ${error.message}`;
+      executionTracker.addLog(runId, errorMsg, 'error');
+      executionTracker.addLog(runId, `Stack trace: ${error.stack}`, 'debug');
       
       logger.error(`\n❌ EXECUTION FAILED: ${error.message}\n`);
       logger.error(`Stack: ${error.stack}\n`);
@@ -272,9 +366,9 @@ class ExecutionEngine {
       try {
         if (page) await playwrightService.closePage(page);
         if (contextId) await playwrightService.closeContext(contextId);
-        executionLogs.push('[BROWSER] Closed resources on error');
+        executionTracker.addLog(runId, 'Closed resources on error', 'info');
       } catch (closeError) {
-        executionLogs.push(`[BROWSER] Error closing resources: ${closeError.message}`);
+        executionTracker.addLog(runId, `Error closing resources: ${closeError.message}`, 'error');
       }
 
       // Update run status
@@ -286,7 +380,7 @@ class ExecutionEngine {
           await run.save();
         }
       } catch (dbError) {
-        executionLogs.push(`[DATABASE] Error updating run status: ${dbError.message}`);
+        executionTracker.addLog(runId, `Error updating run status: ${dbError.message}`, 'error');
       }
 
       // Store failure logs in a result record
@@ -298,7 +392,7 @@ class ExecutionEngine {
           startTime: new Date(startTime),
           endTime: new Date(),
           duration: totalDuration,
-          logs: executionLogs,
+          logs: executionTracker.getLogs(runId),
           error: error.message,
           output: {
             errorType: error.constructor.name,
@@ -309,19 +403,30 @@ class ExecutionEngine {
         logger.error(`Failed to save execution error logs: ${resultError.message}`);
       }
 
+      // Mark execution as complete with error status
+      executionTracker.completeExecution(runId, 'error');
+
       throw error;
     }
   }
 
-  async executeFunction(runId, func, page, vars, selectors, iteration = 1, executionLogs = []) {
+  async executeFunction(runId, func, page, vars, selectors, iteration = 1, executionLogs = [], executionTracker = null) {
     try {
       logger.log(`\nExecuting: ${func.name}`);
       executionLogs.push(`  [FUNCTION] File: ${func.filename || 'inline'}`);
       executionLogs.push(`  [FUNCTION] Code length: ${func.code.length} characters`);
+      
+      if (executionTracker) {
+        executionTracker.addLog(runId, `File: ${func.filename || 'inline'}`, 'debug');
+        executionTracker.addLog(runId, `Code length: ${func.code.length} characters`, 'debug');
+      }
 
       const startTime = Date.now();
       
       executionLogs.push(`  [EXECUTION] Starting function with timeout ${process.env.PLAYWRIGHT_TIMEOUT || 30000}ms`);
+      if (executionTracker) {
+        executionTracker.addLog(runId, `Starting function with timeout ${process.env.PLAYWRIGHT_TIMEOUT || 30000}ms`, 'debug');
+      }
       
       const result = await functionExecutor.executeWithTimeout(
         func.code,
@@ -389,6 +494,114 @@ class ExecutionEngine {
         error: error.stack,
         duration: Date.now() - startTime,
       };
+    }
+  }
+
+  /**
+   * Publish execution results to configured integrations (ADO, Email, Workflow)
+   */
+  async publishToIntegrations(executionData) {
+    try {
+      logger.info('[INTEGRATIONS] Publishing execution results to integrations');
+
+      // Get all settings
+      const adoSetting = await Settings.findOne({ settingKey: 'ado_config' });
+      const emailSetting = await Settings.findOne({ settingKey: 'email_config' });
+      const workflowSetting = await Settings.findOne({ settingKey: 'workflow_config' });
+
+      const results = [];
+
+      // Publish to Azure DevOps if enabled
+      if (adoSetting && adoSetting.enabled && adoSetting.config) {
+        try {
+          logger.info('[INTEGRATIONS] Publishing to Azure DevOps');
+          const AdoHelper = require('./adoHelper');
+          const adoHelper = new AdoHelper(adoSetting.config);
+          
+          const adoData = {
+            runName: `${executionData.scenarioName} - ${new Date().toISOString()}`,
+            functions: [
+              {
+                functionId: executionData.runId,
+                functionName: executionData.scenarioName,
+                status: executionData.status === 'success' ? 'success' : 'failure',
+                duration: executionData.totalDuration,
+                error: executionData.status === 'failure' ? 'Execution failed' : null
+              }
+            ]
+          };
+
+          const adoResult = await adoHelper.publishExecutionResults(adoData);
+          results.push({ service: 'ADO', ...adoResult });
+          logger.info(`[INTEGRATIONS] ADO result: ${adoResult.success ? 'success' : 'failed'}`);
+        } catch (adoError) {
+          logger.error(`[INTEGRATIONS] ADO publishing failed: ${adoError.message}`);
+          results.push({ service: 'ADO', success: false, error: adoError.message });
+        }
+      }
+
+      // Publish to Email if enabled
+      if (emailSetting && emailSetting.enabled && emailSetting.config) {
+        try {
+          logger.info('[INTEGRATIONS] Publishing to Email');
+          const EmailHelper = require('./emailHelper');
+          const emailHelper = new EmailHelper(emailSetting.config);
+
+          const emailData = {
+            scenarioName: executionData.scenarioName,
+            functions: [
+              {
+                functionName: executionData.scenarioName,
+                status: executionData.status === 'success' ? 'success' : 'failure',
+                duration: executionData.totalDuration
+              }
+            ],
+            logs: executionData.executionLogs
+          };
+
+          const emailResult = await emailHelper.publishExecutionResults(emailData);
+          results.push({ service: 'Email', ...emailResult });
+          logger.info(`[INTEGRATIONS] Email result: ${emailResult.success ? 'success' : 'failed'}`);
+        } catch (emailError) {
+          logger.error(`[INTEGRATIONS] Email publishing failed: ${emailError.message}`);
+          results.push({ service: 'Email', success: false, error: emailError.message });
+        }
+      }
+
+      // Publish to Workflow (Webhook) if enabled
+      if (workflowSetting && workflowSetting.enabled && workflowSetting.config) {
+        try {
+          logger.info('[INTEGRATIONS] Publishing to Workflow');
+          const WorkflowHelper = require('./workflowHelper');
+          const workflowHelper = new WorkflowHelper(workflowSetting.config);
+
+          const workflowData = {
+            runId: executionData.runId,
+            scenarioName: executionData.scenarioName,
+            functions: [
+              {
+                functionName: executionData.scenarioName,
+                status: executionData.status === 'success' ? 'success' : 'failure',
+                duration: executionData.totalDuration
+              }
+            ],
+            logs: executionData.executionLogs
+          };
+
+          const workflowResult = await workflowHelper.publishExecutionResults(workflowData);
+          results.push({ service: 'Workflow', ...workflowResult });
+          logger.info(`[INTEGRATIONS] Workflow result: ${workflowResult.success ? 'success' : 'failed'}`);
+        } catch (workflowError) {
+          logger.error(`[INTEGRATIONS] Workflow publishing failed: ${workflowError.message}`);
+          results.push({ service: 'Workflow', success: false, error: workflowError.message });
+        }
+      }
+
+      logger.info(`[INTEGRATIONS] Integration publishing complete: ${results.length} integrations processed`);
+      return results;
+    } catch (error) {
+      logger.error(`[INTEGRATIONS] Error in publishToIntegrations: ${error.message}`);
+      throw error;
     }
   }
 }

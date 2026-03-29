@@ -34,6 +34,8 @@ import {
   Settings as SettingsIcon,
 } from '@mui/icons-material';
 import { apiCalls } from '../api/api';
+import ExecutionMonitor from '../components/ExecutionMonitor';
+import BrowserSetupDialog from '../components/BrowserSetupDialog';
 
 export default function Runs() {
   const [runs, setRuns] = useState([]);
@@ -42,6 +44,16 @@ export default function Runs() {
   const [loading, setLoading] = useState(false);
   const [openDialog, setOpenDialog] = useState(false);
   const [editingId, setEditingId] = useState(null);
+  const [executionMonitorOpen, setExecutionMonitorOpen] = useState(false);
+  const [executingRunId, setExecutingRunId] = useState(null);
+  const [executingScenarioName, setExecutingScenarioName] = useState('');
+  const [browserSetupOpen, setBrowserSetupOpen] = useState(false);
+  const [browserStatus, setBrowserStatus] = useState({
+    browsersInstalled: true,
+    command: null,
+    instructions: [],
+  });
+  const [pendingRunId, setPendingRunId] = useState(null);
   const [formData, setFormData] = useState({
     scenarioId: '',
     userIds: [],
@@ -164,16 +176,64 @@ export default function Runs() {
     if (!run) return;
 
     try {
+      // First, check if browsers are installed
+      const status = await apiCalls.checkBrowserStatus();
+      
+      if (!status.browsersInstalled) {
+        // Browser drivers are missing
+        setBrowserStatus(status);
+        setBrowserSetupOpen(true);
+        setPendingRunId(runId);
+        return;
+      }
+
+      // Browsers are ready, proceed with execution
+      proceedWithExecution(runId, run);
+    } catch (error) {
+      console.error('Error checking browser status:', error);
+      // If check fails, try to proceed anyway
+      proceedWithExecution(runId, run);
+    }
+  };
+
+  const proceedWithExecution = async (runId, run) => {
+    try {
+      // Show the execution monitor first
+      setExecutingRunId(runId);
+      setExecutingScenarioName(run.scenarioName);
+      setExecutionMonitorOpen(true);
+
       // Call the execute endpoint
       await apiCalls.executeRun(runId);
-      alert(`Executing scenario: ${run.scenarioName}\nMode: ${run.mode}\nEnvironment: ${run.environment}\n\nTest execution started in the background. Check the Results tab for logs.`);
-      
-      // Refresh runs to update status
-      loadData();
     } catch (error) {
       console.error('Error executing run:', error);
       alert('Failed to execute run: ' + (error.response?.data?.error || error.message));
+      setExecutionMonitorOpen(false);
     }
+  };
+
+  const handleBrowserSetupRetry = async () => {
+    try {
+      const status = await apiCalls.checkBrowserStatus();
+      setBrowserStatus(status);
+
+      if (status.browsersInstalled && pendingRunId) {
+        // Browsers are now installed, proceed
+        setBrowserSetupOpen(false);
+        const run = runs.find(r => r._id === pendingRunId);
+        if (run) {
+          proceedWithExecution(pendingRunId, run);
+        }
+        setPendingRunId(null);
+      }
+    } catch (error) {
+      console.error('Error retrying browser check:', error);
+    }
+  };
+
+  const handleBrowserSetupClose = () => {
+    setBrowserSetupOpen(false);
+    setPendingRunId(null);
   };
 
   return (
@@ -192,9 +252,6 @@ export default function Runs() {
           variant="contained"
           startIcon={<SettingsIcon />}
           onClick={() => handleOpenDialog()}
-          sx={{
-            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-          }}
         >
           New Run
         </Button>
@@ -394,14 +451,33 @@ export default function Runs() {
           <Button
             onClick={handleSave}
             variant="contained"
-            sx={{
-              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-            }}
           >
             {editingId ? 'Update' : 'Create'}
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* Execution Monitor */}
+      <ExecutionMonitor
+        open={executionMonitorOpen}
+        runId={executingRunId}
+        scenarioName={executingScenarioName}
+        onClose={() => {
+          setExecutionMonitorOpen(false);
+          // Refresh data after execution
+          loadData();
+        }}
+      />
+
+      {/* Browser Setup Dialog */}
+      <BrowserSetupDialog
+        open={browserSetupOpen}
+        browsersInstalled={browserStatus.browsersInstalled}
+        command={browserStatus.command}
+        instructions={browserStatus.instructions}
+        onRetry={handleBrowserSetupRetry}
+        onClose={handleBrowserSetupClose}
+      />
     </Box>
   );
 }

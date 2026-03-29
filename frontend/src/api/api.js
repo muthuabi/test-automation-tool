@@ -203,10 +203,78 @@ export const apiCalls = {
     return response.data;
   },
 
+  // Integration settings
+  validateAdoConfig: async (config) => {
+    const response = await api.post('/settings/integrations/ado/validate', config);
+    return response.data;
+  },
+
+  saveAdoConfig: async (config) => {
+    const response = await api.post('/settings/integrations/ado/save', config);
+    return response.data;
+  },
+
+  validateEmailConfig: async (config) => {
+    const response = await api.post('/settings/integrations/email/validate', config);
+    return response.data;
+  },
+
+  saveEmailConfig: async (config) => {
+    const response = await api.post('/settings/integrations/email/save', config);
+    return response.data;
+  },
+
+  validateWorkflowConfig: async (config) => {
+    const response = await api.post('/settings/integrations/workflow/validate', config);
+    return response.data;
+  },
+
+  saveWorkflowConfig: async (config) => {
+    const response = await api.post('/settings/integrations/workflow/save', config);
+    return response.data;
+  },
+
+  getIntegrationsSummary: async () => {
+    const response = await api.get('/settings/integrations/summary');
+    return response.data;
+  },
+
+  toggleIntegration: async (integration, enabled) => {
+    const response = await api.post('/settings/integrations/toggle', { integration, enabled });
+    return response.data;
+  },
+
+  // Manual triggers for integrations
+  manualTriggerAdo: async (config) => {
+    const response = await api.post('/settings/manual/ado-trigger', config);
+    return response.data;
+  },
+
+  manualTriggerEmail: async (config) => {
+    const response = await api.post('/settings/manual/email-trigger', config);
+    return response.data;
+  },
+
+  manualTriggerWorkflow: async (config) => {
+    const response = await api.post('/settings/manual/workflow-trigger', config);
+    return response.data;
+  },
+
   // Execution
   executeRun: async (runId) => {
     const response = await api.post(`/runs/${runId}/execute`);
     return response.data;
+  },
+
+  // Check Playwright browser installation status
+  checkBrowserStatus: async () => {
+    try {
+      const response = await api.post('/runs/check-browser-status');
+      return response.data;
+    } catch (error) {
+      // If endpoint doesn't exist, assume browsers are installed
+      return { browsersInstalled: true, message: 'Browser status check not available' };
+    }
   },
 
   executeScenario: async (scenarioId, config) => {
@@ -222,6 +290,39 @@ export const apiCalls = {
     } catch (error) {
       console.log('Failed to fetch execution logs', error);
       return { runId, logs: [], summary: { message: 'No logs available' } };
+    }
+  },
+
+  // Get live execution logs (real-time monitoring)
+  getLiveExecutionLogs: async (runId) => {
+    try {
+      const response = await api.get(`/runs/${runId}/logs`);
+      return response.data;
+    } catch (error) {
+      console.log('Failed to fetch live execution logs', error);
+      return { runId, logs: [], status: 'unknown', logsCount: 0 };
+    }
+  },
+
+  // Get execution status
+  getExecutionStatus: async (runId) => {
+    try {
+      const response = await api.get(`/runs/${runId}/status`);
+      return response.data;
+    } catch (error) {
+      console.log('Failed to fetch execution status', error);
+      return { found: false, status: 'unknown' };
+    }
+  },
+
+  // Cancel execution
+  cancelExecution: async (runId) => {
+    try {
+      const response = await api.post(`/runs/${runId}/cancel`);
+      return response.data;
+    } catch (error) {
+      console.log('Failed to cancel execution', error);
+      throw error;
     }
   },
 

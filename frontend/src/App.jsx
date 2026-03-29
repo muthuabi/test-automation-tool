@@ -1,6 +1,7 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import { ThemeProvider, createTheme, CssBaseline } from '@mui/material';
+import { ThemeProvider, CssBaseline } from '@mui/material';
+import theme from './theme/theme';
 import Layout from './layout/Layout';
 
 // Pages
@@ -11,23 +12,10 @@ import Functions from './pages/Functions';
 import Scenarios from './pages/Scenarios';
 import Runs from './pages/Runs';
 import Results from './pages/Results';
+import Integrations from './pages/Integrations';
 import AdoSettings from './pages/AdoSettings';
 import TeamsSettings from './pages/TeamsSettings';
 import EmailSettings from './pages/EmailSettings';
-
-const theme = createTheme({
-  palette: {
-    primary: {
-      main: '#667eea',
-    },
-    secondary: {
-      main: '#764ba2',
-    },
-  },
-  typography: {
-    fontFamily: '"Segoe UI", "Roboto", "Oxygen", "Ubuntu", "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue", sans-serif',
-  },
-});
 
 function App() {
   return (
@@ -88,6 +76,14 @@ function App() {
             element={
               <Layout>
                 <Results />
+              </Layout>
+            }
+          />
+          <Route
+            path="/integrations"
+            element={
+              <Layout>
+                <Integrations />
               </Layout>
             }
           />

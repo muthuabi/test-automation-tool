@@ -191,7 +191,7 @@ export default function Results() {
                       </IconButton>
                       <IconButton
                         size="small"
-                        onClick={() => handleDelete(result.id)}
+                        onClick={() => handleDelete(result._id)}
                         color="error"
                         title="Delete"
                       >
