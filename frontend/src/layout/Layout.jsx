@@ -68,10 +68,9 @@ export default function Layout({ children }) {
           color: 'white',
         }}
       >
-        <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 1 }}>
-          Test Automation
+        <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 0.5}}>
+          eComm
         </Typography>
-        <Typography variant="caption">Tool</Typography>
       </Box>
 
       <List sx={{ flex: 1, pt: 2 }}>
@@ -195,7 +194,7 @@ export default function Layout({ children }) {
           '& .MuiDrawer-paper': {
             boxSizing: 'border-box',
             width: DRAWER_WIDTH,
-            borderRight: '1px solid #e0e0e0',
+            borderRight: '0.5px solid #ffffff',
           },
         }}
       >

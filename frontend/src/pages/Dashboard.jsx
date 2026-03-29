@@ -96,7 +96,7 @@ export default function Dashboard() {
           Dashboard
         </Typography>
         <Typography variant="body2" color="textSecondary">
-          Overview of your test automation platform
+          Overview
         </Typography>
       </Box>
 

@@ -264,7 +264,7 @@ export default function Results() {
               <Accordion defaultExpanded sx={{ mb: 2 }}>
                 <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                   <Typography variant="subtitle2" sx={{ fontWeight: 'bold' }}>
-                    📋 Execution Logs ({executionLogs.logs?.length || 0} entries)
+                    Execution Logs ({executionLogs.logs?.length || 0} entries)
                   </Typography>
                 </AccordionSummary>
                 <AccordionDetails>
@@ -336,7 +336,7 @@ export default function Results() {
               <Accordion sx={{ mb: 2 }}>
                 <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                   <Typography variant="subtitle2" sx={{ fontWeight: 'bold', color: '#d32f2f' }}>
-                    ⚠️ Error Details
+                    Error Details
                   </Typography>
                 </AccordionSummary>
                 <AccordionDetails>
@@ -354,7 +354,7 @@ export default function Results() {
               <Accordion>
                 <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                   <Typography variant="subtitle2" sx={{ fontWeight: 'bold' }}>
-                    📊 Output Data
+                    Output Data
                   </Typography>
                 </AccordionSummary>
                 <AccordionDetails>

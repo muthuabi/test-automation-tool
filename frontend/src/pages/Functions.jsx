@@ -157,7 +157,7 @@ export default function Functions() {
       <Card sx={{ mb: 3, backgroundColor: '#f0f4ff', borderLeft: '4px solid #667eea' }}>
         <CardContent>
           <Typography variant="subtitle2" sx={{ fontWeight: 'bold', mb: 1 }}>
-            📝 Function Template
+            Function Template
           </Typography>
           <Typography variant="body2" color="textSecondary" sx={{ mb: 1 }}>
             Functions receive three arguments:
