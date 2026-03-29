@@ -25,6 +25,7 @@ import {
   List,
   ListItem,
   ListItemText,
+  Grid,
 } from '@mui/material';
 import {
   Visibility as VisibilityIcon,
@@ -61,6 +62,27 @@ export default function Results() {
   const handleViewDetails = (result) => {
     setSelectedResult(result);
     setOpenDetailsDialog(true);
+    // Load execution logs if this is a run ID
+    if (result.runId) {
+      loadExecutionLogs(typeof result.runId === 'object' ? result.runId._id : result.runId);
+    }
+  };
+
+  const loadExecutionLogs = async (runId) => {
+    setLogsLoading(true);
+    try {
+      const logs = await apiCalls.getExecutionLogs(runId);
+      setExecutionLogs(logs);
+    } catch (error) {
+      console.error('Error loading execution logs:', error);
+      setExecutionLogs({ 
+        runId, 
+        logs: ['Failed to load execution logs: ' + error.message], 
+        summary: {} 
+      });
+    } finally {
+      setLogsLoading(false);
+    }
   };
 
   const handleCloseDetailsDialog = () => {
@@ -186,133 +208,182 @@ export default function Results() {
 
       {/* Details Dialog */}
       {selectedResult && (
-        <Dialog open={openDetailsDialog} onClose={handleCloseDetailsDialog} maxWidth="md" fullWidth>
+        <Dialog open={openDetailsDialog} onClose={handleCloseDetailsDialog} maxWidth="lg" fullWidth>
           <DialogTitle>
-            Execution Details - {selectedResult.scenarioName}
+            Execution Details - {selectedResult.scenarioName || selectedResult.functionName}
             <Chip
               label={selectedResult.status}
-              color={selectedResult.status === 'Passed' ? 'success' : 'error'}
+              color={selectedResult.status === 'passed' ? 'success' : 'error'}
               size="small"
               sx={{ ml: 2 }}
             />
           </DialogTitle>
           <DialogContent sx={{ pt: 2 }}>
-            {/* Summary */}
-            <Card sx={{ mb: 2, backgroundColor: '#f9f9f9' }}>
+            {/* Summary Stats */}
+            <Card sx={{ mb: 3, backgroundColor: '#f5f5f5' }}>
               <CardContent>
-                <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 2 }}>
-                  <Box>
+                <Grid container spacing={2}>
+                  <Grid item xs={12} sm={6} md={3}>
                     <Typography variant="caption" color="textSecondary">
-                      Execution Time
+                      Duration
                     </Typography>
-                    <Typography variant="h6">
-                      {(selectedResult.executionTime / 1000).toFixed(2)}s
+                    <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
+                      {(selectedResult.duration || 0)}ms
                     </Typography>
-                  </Box>
-                  <Box>
+                  </Grid>
+                  <Grid item xs={12} sm={6} md={3}>
                     <Typography variant="caption" color="textSecondary">
-                      Environment
+                      Status
                     </Typography>
-                    <Typography variant="h6">{selectedResult.environment}</Typography>
-                  </Box>
-                  <Box>
+                    <Typography variant="h6" sx={{ textTransform: 'capitalize', fontWeight: 'bold' }}>
+                      {selectedResult.status}
+                    </Typography>
+                  </Grid>
+                  <Grid item xs={12} sm={6} md={3}>
                     <Typography variant="caption" color="textSecondary">
-                      Run Mode
+                      Started
                     </Typography>
-                    <Typography variant="h6">{selectedResult.runMode}</Typography>
-                  </Box>
-                  <Box>
+                    <Typography variant="body2">
+                      {selectedResult.startTime ? new Date(selectedResult.startTime).toLocaleTimeString() : 'N/A'}
+                    </Typography>
+                  </Grid>
+                  <Grid item xs={12} sm={6} md={3}>
                     <Typography variant="caption" color="textSecondary">
-                      Started At
+                      Ended
                     </Typography>
-                    <Typography variant="h6">{selectedResult.startTime}</Typography>
-                  </Box>
-                </Box>
+                    <Typography variant="body2">
+                      {selectedResult.endTime ? new Date(selectedResult.endTime).toLocaleTimeString() : 'N/A'}
+                    </Typography>
+                  </Grid>
+                </Grid>
               </CardContent>
             </Card>
 
-            {/* Function Results */}
-            <Typography variant="subtitle2" sx={{ fontWeight: 'bold', mb: 1 }}>
-              Function Results
-            </Typography>
-            {selectedResult.functionResults && selectedResult.functionResults.length > 0 ? (
-              <Box sx={{ mb: 2 }}>
-                {selectedResult.functionResults.map((funcResult, idx) => (
-                  <Accordion key={idx}>
-                    <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                      <Chip
-                        label={funcResult.status}
-                        color={funcResult.status === 'Passed' ? 'success' : 'error'}
-                        size="small"
-                        sx={{ mr: 2 }}
-                      />
-                      <Typography sx={{ fontWeight: 'bold' }}>
-                        {funcResult.functionName}
-                      </Typography>
-                      <Typography variant="caption" color="textSecondary" sx={{ ml: 'auto', mr: 1 }}>
-                        {(funcResult.duration / 1000).toFixed(2)}s
-                      </Typography>
-                    </AccordionSummary>
-                    <AccordionDetails>
-                      {funcResult.error && (
-                        <Box sx={{ mb: 2, p: 1, backgroundColor: '#ffebee', borderRadius: 1 }}>
-                          <Typography variant="caption" sx={{ color: '#c62828' }}>
-                            {funcResult.error}
+            {/* Execution Logs */}
+            {executionLogs && (
+              <Accordion defaultExpanded sx={{ mb: 2 }}>
+                <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                  <Typography variant="subtitle2" sx={{ fontWeight: 'bold' }}>
+                    📋 Execution Logs ({executionLogs.logs?.length || 0} entries)
+                  </Typography>
+                </AccordionSummary>
+                <AccordionDetails>
+                  {logsLoading ? (
+                    <Box sx={{ display: 'flex', justifyContent: 'center', py: 2 }}>
+                      <CircularProgress size={30} />
+                    </Box>
+                  ) : (
+                    <Paper sx={{ backgroundColor: '#1e1e1e', color: '#d4d4d4', p: 2, borderRadius: 1, maxHeight: 400, overflow: 'auto' }}>
+                      <List dense>
+                        {executionLogs.logs && executionLogs.logs.map((log, idx) => (
+                          <ListItem key={idx} sx={{ py: 0.5, px: 1 }}>
+                            <ListItemText
+                              primary={
+                                <Typography
+                                  variant="caption"
+                                  sx={{
+                                    fontFamily: 'monospace',
+                                    fontSize: '0.8rem',
+                                    color: log.includes('[ERROR]') || log.includes('✗')
+                                      ? '#f48771'
+                                      : log.includes('[VALIDATION]') || log.includes('[BROWSER]')
+                                      ? '#4ec9b0'
+                                      : log.includes('✓')
+                                      ? '#6a9955'
+                                      : '#d4d4d4',
+                                    whiteSpace: 'pre-wrap',
+                                    wordBreak: 'break-word',
+                                  }}
+                                >
+                                  {log}
+                                </Typography>
+                              }
+                            />
+                          </ListItem>
+                        ))}
+                        {(!executionLogs.logs || executionLogs.logs.length === 0) && (
+                          <Typography variant="caption" color="textSecondary" sx={{ p: 2 }}>
+                            No logs available
                           </Typography>
-                        </Box>
-                      )}
+                        )}
+                      </List>
+                    </Paper>
+                  )}
+                  {executionLogs.summary && (
+                    <Box sx={{ mt: 2 }}>
                       <Typography variant="caption" color="textSecondary">
-                        Duration: {(funcResult.duration / 1000).toFixed(2)}s
+                        Summary
                       </Typography>
-                    </AccordionDetails>
-                  </Accordion>
-                ))}
-              </Box>
-            ) : (
-              <Typography variant="body2" color="textSecondary" sx={{ mb: 2 }}>
-                No function results available.
-              </Typography>
+                      <Typography variant="body2">
+                        Status: <strong>{executionLogs.summary.status}</strong> • 
+                        Functions: <strong>{executionLogs.summary.passed}</strong> passed, 
+                        <strong>{executionLogs.summary.failed}</strong> failed
+                        {executionLogs.summary.error && (
+                          <>
+                            <br />
+                            <span style={{ color: '#d32f2f' }}>Error: {executionLogs.summary.error}</span>
+                          </>
+                        )}
+                      </Typography>
+                    </Box>
+                  )}
+                </AccordionDetails>
+              </Accordion>
             )}
 
-            {/* Logs */}
-            <Typography variant="subtitle2" sx={{ fontWeight: 'bold', mb: 1 }}>
-              Execution Logs
-            </Typography>
-            <Paper
-              sx={{
-                p: 2,
-                backgroundColor: '#1e1e1e',
-                color: '#d4d4d4',
-                fontFamily: 'monospace',
-                fontSize: '12px',
-                overflowX: 'auto',
-                maxHeight: '300px',
-                overflowY: 'auto',
-              }}
-            >
-              {selectedResult.logs && selectedResult.logs.length > 0 ? (
-                selectedResult.logs.map((log, idx) => (
-                  <div key={idx} style={{ margin: '4px 0' }}>
-                    {log}
-                  </div>
-                ))
-              ) : (
-                <div>No logs available.</div>
-              )}
-            </Paper>
+            {/* Error Details */}
+            {selectedResult.error && (
+              <Accordion sx={{ mb: 2 }}>
+                <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                  <Typography variant="subtitle2" sx={{ fontWeight: 'bold', color: '#d32f2f' }}>
+                    ⚠️ Error Details
+                  </Typography>
+                </AccordionSummary>
+                <AccordionDetails>
+                  <Paper sx={{ backgroundColor: '#ffebee', p: 2, borderRadius: 1, borderLeft: '4px solid #d32f2f' }}>
+                    <Typography variant="caption" sx={{ fontFamily: 'monospace', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                      {selectedResult.error}
+                    </Typography>
+                  </Paper>
+                </AccordionDetails>
+              </Accordion>
+            )}
+
+            {/* Output/Result Data */}
+            {selectedResult.output && (
+              <Accordion>
+                <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                  <Typography variant="subtitle2" sx={{ fontWeight: 'bold' }}>
+                    📊 Output Data
+                  </Typography>
+                </AccordionSummary>
+                <AccordionDetails>
+                  <Paper sx={{ backgroundColor: '#f5f5f5', p: 2, borderRadius: 1, width: '100%', overflow: 'auto' }}>
+                    <Typography variant="caption" sx={{ fontFamily: 'monospace', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                      {typeof selectedResult.output === 'string'
+                        ? selectedResult.output
+                        : JSON.stringify(selectedResult.output, null, 2)}
+                    </Typography>
+                  </Paper>
+                </AccordionDetails>
+              </Accordion>
+            )}
           </DialogContent>
           <DialogActions>
-            <Button
-              onClick={() => handleDownload(selectedResult)}
-              startIcon={<DownloadIcon />}
-              variant="outlined"
-            >
-              Download JSON
-            </Button>
             <Button onClick={handleCloseDetailsDialog}>Close</Button>
+            {selectedResult && (
+              <Button
+                onClick={() => handleDownload(selectedResult)}
+                startIcon={<DownloadIcon />}
+                variant="outlined"
+              >
+                Download JSON
+              </Button>
+            )}
           </DialogActions>
         </Dialog>
       )}
     </Box>
   );
 }
+       
