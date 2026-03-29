@@ -67,26 +67,22 @@ export default function Dashboard() {
     {
       title: 'Total Users',
       value: users.length,
-      color: '#667eea',
-      icon: '👥',
+      color: '#1976d2',
     },
     {
       title: 'Automation Functions',
       value: functions.length,
-      color: '#764ba2',
-      icon: '⚙️',
+      color: '#1976d2',
     },
     {
       title: 'Test Scenarios',
       value: scenarios.length,
-      color: '#f093fb',
-      icon: '🎯',
+      color: '#1976d2',
     },
     {
       title: 'Execution Results',
       value: results.length,
-      color: '#4facfe',
-      icon: '✅',
+      color: '#1976d2',
     },
   ];
 
@@ -105,31 +101,28 @@ export default function Dashboard() {
       </Box>
 
       {/* Statistics Cards */}
-      <Grid container spacing={2} sx={{ mb: 4 }}>
+      <Grid container spacing={3} sx={{ mb: 4 }}>
         {stats.map((stat, index) => (
           <Grid item xs={12} sm={6} md={3} key={index}>
             <Card
               sx={{
-                background: `linear-gradient(135deg, ${stat.color}20, ${stat.color}10)`,
+                height: '100%',
+                backgroundColor: '#ffffff',
                 borderLeft: `4px solid ${stat.color}`,
-                transition: 'transform 0.2s',
+                transition: 'transform 0.2s, box-shadow 0.2s',
                 '&:hover': {
                   transform: 'translateY(-4px)',
+                  boxShadow: '0 8px 16px rgba(0, 0, 0, 0.12)',
                 },
               }}
             >
               <CardContent>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start' }}>
-                  <Box>
-                    <Typography color="textSecondary" gutterBottom variant="body2">
-                      {stat.title}
-                    </Typography>
-                    <Typography variant="h5" sx={{ fontWeight: 'bold', color: stat.color }}>
-                      {stat.value}
-                    </Typography>
-                  </Box>
-                  <Typography variant="h4">{stat.icon}</Typography>
-                </Box>
+                <Typography color="textSecondary" variant="body2" sx={{ mb: 2 }}>
+                  {stat.title}
+                </Typography>
+                <Typography variant="h4" sx={{ fontWeight: 'bold', color: stat.color }}>
+                  {stat.value}
+                </Typography>
               </CardContent>
             </Card>
           </Grid>

@@ -7,6 +7,11 @@ router.get('/', settingsController.getSettings);
 router.get('/category/:category', settingsController.getSettingsByCategory);
 router.get('/key/:key', settingsController.getSetting);
 router.post('/', settingsController.createSetting);
+
+// Bulk update settings (handles frontend format: { ado: {...}, email: {...}, ... })
+router.put('/', settingsController.bulkUpdateSettings);
+
+// Individual updates by ID or key
 router.put('/:id', settingsController.updateSettingById);
 router.put('/key/:key', settingsController.updateSetting);
 router.delete('/:id', settingsController.deleteSetting);

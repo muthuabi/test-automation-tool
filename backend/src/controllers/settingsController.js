@@ -99,6 +99,77 @@ exports.deleteSetting = async (req, res) => {
 };
 
 /**
+ * Bulk update settings - accepts an object with categories as keys
+ * Frontend sends: { ado: {...}, email: {...}, workflow: {...}, ... }
+ * This method updates/creates settings for each category
+ */
+exports.bulkUpdateSettings = async (req, res) => {
+  try {
+    const settingsObject = req.body;
+    const updateResults = {};
+
+    // List of valid categories in the settings model
+    const validCategories = ['ado', 'teams', 'email', 'general', 'workflow'];
+
+    for (const [key, value] of Object.entries(settingsObject)) {
+      // Skip if not a valid category
+      if (!validCategories.includes(key)) {
+        continue;
+      }
+
+      // Skip if value is null or undefined
+      if (!value) {
+        continue;
+      }
+
+      try {
+        // Check if this is an object with configuration
+        if (typeof value === 'object' && value !== null) {
+          // Extract the config - could be nested or flat
+          const config = { ...value };
+          const enabled = config.enabled !== undefined ? config.enabled : false;
+
+          // Update or create the setting
+          const setting = await Settings.findOneAndUpdate(
+            { settingKey: key, category: key },
+            {
+              settingKey: key,
+              category: key,
+              enabled,
+              config,
+              description: `${key.charAt(0).toUpperCase() + key.slice(1)} integration settings`,
+            },
+            {
+              new: true,
+              upsert: true,
+              runValidators: true,
+            }
+          );
+
+          updateResults[key] = {
+            success: true,
+            data: setting,
+          };
+        }
+      } catch (categoryError) {
+        logger.error(`Error updating ${key} settings: ${categoryError.message}`);
+        updateResults[key] = {
+          success: false,
+          error: categoryError.message,
+        };
+      }
+    }
+
+    res.json({
+      message: 'Settings updated successfully',
+      results: updateResults,
+    });
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+};
+
+/**
  * Validate Azure DevOps configuration
  */
 exports.validateAdoConfig = async (req, res) => {
