@@ -18,8 +18,8 @@ class EmailHelper {
       // Support for different email service providers
       if (this.config.service === 'smtp') {
         this.transporter = nodemailer.createTransport({
-          host: this.config.smtpHost,
-          port: this.config.smtpPort,
+          host: this.config.smtpHost || "smtp.gmail.com",
+          port: this.config.smtpPort || 587,
           secure: this.config.secure || false,
           auth: {
             user: this.config.username,
