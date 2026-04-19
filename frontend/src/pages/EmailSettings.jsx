@@ -73,17 +73,39 @@ export default function EmailSettings() {
 
     setSaving(true);
     try {
-      const settings = await apiCalls.getSettings();
-      const updatedSettings = {
-        ...settings,
-        email: formData,
+      // Create settings object in the format backend expects
+      const settingsPayload = {
+        email: {
+          enabled: formData.enabled,
+          smtpServer: formData.smtpServer,
+          fromAddress: formData.fromAddress,
+          recipientsList: formData.recipientsList,
+          // Add other fields from formData
+          ...Object.keys(formData)
+            .filter(key => !['enabled', 'smtpServer', 'fromAddress', 'recipientsList'].includes(key))
+            .reduce((acc, key) => {
+              acc[key] = formData[key];
+              return acc;
+            }, {}),
+        },
       };
-      await apiCalls.updateSettings(updatedSettings);
-      setMessage('Settings saved successfully!');
-      setTimeout(() => setMessage(''), 3000);
+
+      // Call the API to save
+      const response = await apiCalls.updateSettings(settingsPayload);
+      
+      // Verify the save was successful
+      if (response.results && response.results.email && response.results.email.success) {
+        setMessage('✓ Settings saved successfully!');
+        setTimeout(() => setMessage(''), 3000);
+      } else if (response.saved && response.saved.email) {
+        setMessage('✓ Settings saved successfully!');
+        setTimeout(() => setMessage(''), 3000);
+      } else {
+        setMessage('⚠ Settings saved but verification failed. Please reload to confirm.');
+      }
     } catch (error) {
       console.error('Error saving settings:', error);
-      setMessage('Failed to save settings');
+      setMessage(`❌ Failed to save settings: ${error.message || 'Unknown error'}`);
     } finally {
       setSaving(false);
     }

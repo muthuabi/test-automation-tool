@@ -50,17 +50,39 @@ export default function AdoSettings() {
   const handleSave = async () => {
     setSaving(true);
     try {
-      const settings = await apiCalls.getSettings();
-      const updatedSettings = {
-        ...settings,
-        ado: formData,
+      // Create settings object in the format backend expects
+      const settingsPayload = {
+        ado: {
+          enabled: formData.enabled,
+          projectUrl: formData.projectUrl,
+          pat: formData.pat,
+          teamId: formData.teamId,
+          // Add other fields from formData
+          ...Object.keys(formData)
+            .filter(key => !['enabled', 'projectUrl', 'pat', 'teamId'].includes(key))
+            .reduce((acc, key) => {
+              acc[key] = formData[key];
+              return acc;
+            }, {}),
+        },
       };
-      await apiCalls.updateSettings(updatedSettings);
-      setMessage('Settings saved successfully!');
-      setTimeout(() => setMessage(''), 3000);
+
+      // Call the API to save
+      const response = await apiCalls.updateSettings(settingsPayload);
+      
+      // Verify the save was successful
+      if (response.results && response.results.ado && response.results.ado.success) {
+        setMessage('✓ Settings saved successfully!');
+        setTimeout(() => setMessage(''), 3000);
+      } else if (response.saved && response.saved.ado) {
+        setMessage('✓ Settings saved successfully!');
+        setTimeout(() => setMessage(''), 3000);
+      } else {
+        setMessage('⚠ Settings saved but verification failed. Please reload to confirm.');
+      }
     } catch (error) {
       console.error('Error saving settings:', error);
-      setMessage('Failed to save settings');
+      setMessage(`❌ Failed to save settings: ${error.message || 'Unknown error'}`);
     } finally {
       setSaving(false);
     }

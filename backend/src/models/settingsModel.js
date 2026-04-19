@@ -9,7 +9,7 @@ const settingsSchema = new mongoose.Schema(
     },
     category: {
       type: String,
-      enum: ['ado', 'teams', 'email', 'general'],
+      enum: ['ado', 'teams', 'email', 'general', 'workflow'],
       required: true,
     },
     enabled: {

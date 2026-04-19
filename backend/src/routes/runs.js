@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const runsController = require('../controllers/runsController');
 const executionEngine = require('../services/executionEngine');
+const workerPool = require('../utils/workerPool');
 const logger = require('../utils/logger');
 const { validateAndConvertId } = require('../utils/idValidator');
 const executionTracker = require('../utils/executionTracker');
@@ -59,7 +60,7 @@ router.post('/check-browser-status', async (req, res) => {
   }
 });
 
-// Execute a run
+// Execute a run (NON-BLOCKING - uses worker thread)
 router.post('/:id/execute', async (req, res) => {
   try {
     const { id } = req.params;
@@ -71,12 +72,30 @@ router.post('/:id/execute', async (req, res) => {
       return res.status(400).json({ error: validationError.message });
     }
     
-    // Start execution asynchronously
-    executionEngine.executeScenario(id).catch((err) => {
-      logger.error(`Execution failed for run ${id}: ${err.message}`);
+    // Check if already executing
+    if (workerPool.isExecuting(id)) {
+      return res.status(409).json({ 
+        error: 'Run is already executing',
+        runId: id,
+        activeExecutions: workerPool.getActiveCount()
+      });
+    }
+    
+    logger.info(`[API] Execution request for run ${id} - delegating to worker thread`);
+    
+    // Start execution in worker thread (non-blocking)
+    // This returns immediately while execution continues in background
+    workerPool.executeScenario(id).catch((err) => {
+      logger.error(`[WORKER] Execution failed for run ${id}: ${err.message}`);
     });
 
-    res.json({ message: 'Scenario execution started', runId: id });
+    // Return immediately - don't wait for execution to complete
+    res.json({ 
+      message: 'Scenario execution started in background',
+      runId: id,
+      activeExecutions: workerPool.getActiveCount(),
+      pendingExecutions: workerPool.getPendingCount()
+    });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

@@ -8,7 +8,23 @@ const logger = require('../utils/logger');
 exports.getSettings = async (req, res) => {
   try {
     const settings = await Settings.find();
-    res.json(settings);
+    
+    // Transform database format to frontend format
+    // Frontend expects: { ado: {...}, email: {...}, workflow: {...} }
+    // Database stores: [{ settingKey, category, config, enabled, ... }]
+    const result = {};
+    
+    for (const setting of settings) {
+      // Use category as the key, and merge config with enabled flag
+      result[setting.category] = {
+        enabled: setting.enabled,
+        ...setting.config, // Spread the actual configuration
+        _id: setting._id,
+        settingKey: setting.settingKey,
+      };
+    }
+    
+    res.json(result);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -107,6 +123,7 @@ exports.bulkUpdateSettings = async (req, res) => {
   try {
     const settingsObject = req.body;
     const updateResults = {};
+    const savedData = {};
 
     // List of valid categories in the settings model
     const validCategories = ['ado', 'teams', 'email', 'general', 'workflow'];
@@ -114,29 +131,38 @@ exports.bulkUpdateSettings = async (req, res) => {
     for (const [key, value] of Object.entries(settingsObject)) {
       // Skip if not a valid category
       if (!validCategories.includes(key)) {
+        logger.warn(`[SETTINGS] Skipping invalid category: ${key}`);
         continue;
       }
 
       // Skip if value is null or undefined
       if (!value) {
+        logger.info(`[SETTINGS] Skipping empty category: ${key}`);
         continue;
       }
 
       try {
         // Check if this is an object with configuration
         if (typeof value === 'object' && value !== null) {
-          // Extract the config - could be nested or flat
-          const config = { ...value };
-          const enabled = config.enabled !== undefined ? config.enabled : false;
+          // Extract the enabled flag - defaults to true if provided
+          const enabled = value.enabled !== undefined ? value.enabled : true;
+          
+          // Create a copy without the _id and settingKey fields for storage
+          const configToStore = { ...value };
+          delete configToStore._id;
+          delete configToStore.settingKey;
+          delete configToStore.enabled; // Don't duplicate enabled flag in config
+          
+          logger.info(`[SETTINGS] Updating ${key} settings with enabled=${enabled}`);
 
           // Update or create the setting
           const setting = await Settings.findOneAndUpdate(
-            { settingKey: key, category: key },
+            { settingKey: `${key}_config`, category: key },
             {
-              settingKey: key,
+              settingKey: `${key}_config`,
               category: key,
               enabled,
-              config,
+              config: configToStore,
               description: `${key.charAt(0).toUpperCase() + key.slice(1)} integration settings`,
             },
             {
@@ -146,25 +172,37 @@ exports.bulkUpdateSettings = async (req, res) => {
             }
           );
 
+          // Transform to frontend format for response
+          savedData[key] = {
+            enabled: setting.enabled,
+            ...setting.config,
+          };
+
           updateResults[key] = {
             success: true,
-            data: setting,
+            message: `${key} settings saved successfully`,
+            saved: true,
           };
+
+          logger.info(`[SETTINGS] ✓ ${key} settings saved successfully`);
         }
       } catch (categoryError) {
-        logger.error(`Error updating ${key} settings: ${categoryError.message}`);
+        logger.error(`[SETTINGS] Error updating ${key} settings: ${categoryError.message}`);
         updateResults[key] = {
           success: false,
           error: categoryError.message,
+          saved: false,
         };
       }
     }
 
     res.json({
-      message: 'Settings updated successfully',
+      message: 'Settings update completed',
       results: updateResults,
+      saved: savedData, // Return what was actually saved
     });
   } catch (error) {
+    logger.error(`[SETTINGS] Bulk update error: ${error.message}`);
     res.status(400).json({ error: error.message });
   }
 };
