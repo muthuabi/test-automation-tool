@@ -64,16 +64,27 @@ router.post('/check-browser-status', async (req, res) => {
 router.post('/:id/execute', async (req, res) => {
   try {
     const { id } = req.params;
+    console.log(`\n${'='.repeat(60)}`);
+    console.log(`[EXECUTE API] Received execution request for run: ${id}`);
+    console.log(`[EXECUTE API] Timestamp: ${new Date().toISOString()}`);
+    console.log(`${'='.repeat(60)}\n`);
+    
+    logger.info(`\n[EXECUTE API] ========== EXECUTION REQUEST ==========`);
+    logger.info(`[EXECUTE API] Run ID: ${id}`);
+    logger.info(`[EXECUTE API] Time: ${new Date().toISOString()}`);
     
     // Validate the run ID before executing
     try {
       validateAndConvertId(id, 'Run ID');
+      logger.info(`[EXECUTE API] ✓ Run ID validation passed`);
     } catch (validationError) {
+      logger.error(`[EXECUTE API] ✗ Run ID validation failed: ${validationError.message}`);
       return res.status(400).json({ error: validationError.message });
     }
     
     // Check if already executing
     if (workerPool.isExecuting(id)) {
+      logger.warn(`[EXECUTE API] ⚠ Run ${id} is already executing`);
       return res.status(409).json({ 
         error: 'Run is already executing',
         runId: id,
@@ -81,22 +92,29 @@ router.post('/:id/execute', async (req, res) => {
       });
     }
     
-    logger.info(`[API] Execution request for run ${id} - delegating to worker thread`);
+    logger.info(`[EXECUTE API] Active executions: ${workerPool.getActiveCount()}/3`);
+    logger.info(`[EXECUTE API] Pending executions: ${workerPool.getPendingCount()}`);
+    logger.info(`[EXECUTE API] Delegating to worker thread...`);
     
     // Start execution in worker thread (non-blocking)
     // This returns immediately while execution continues in background
     workerPool.executeScenario(id).catch((err) => {
-      logger.error(`[WORKER] Execution failed for run ${id}: ${err.message}`);
+      logger.error(`\n[WORKER EXECUTION FAILED] Run ${id}: ${err.message}\n`);
     });
 
+    logger.info(`[EXECUTE API] ✓ Execution started in background worker`);
+    logger.info(`[EXECUTE API] ==========================================\n`);
+    
     // Return immediately - don't wait for execution to complete
     res.json({ 
       message: 'Scenario execution started in background',
       runId: id,
       activeExecutions: workerPool.getActiveCount(),
-      pendingExecutions: workerPool.getPendingCount()
+      pendingExecutions: workerPool.getPendingCount(),
+      timestamp: new Date().toISOString()
     });
   } catch (error) {
+    logger.error(`[EXECUTE API] CRITICAL ERROR: ${error.message}`);
     res.status(500).json({ error: error.message });
   }
 });

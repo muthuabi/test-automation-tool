@@ -12,7 +12,13 @@ exports.getSettings = async (req, res) => {
     // Transform database format to frontend format
     // Frontend expects: { ado: {...}, email: {...}, workflow: {...} }
     // Database stores: [{ settingKey, category, config, enabled, ... }]
-    const result = {};
+    const result = {
+      ado: { enabled: false },
+      email: { enabled: false },
+      workflow: { enabled: false },
+      teams: { enabled: false },
+      general: { enabled: false }
+    };
     
     for (const setting of settings) {
       // Use category as the key, and merge config with enabled flag
@@ -24,8 +30,10 @@ exports.getSettings = async (req, res) => {
       };
     }
     
+    logger.info(`[SETTINGS] Returning ${Object.keys(settings).length} saved settings`);
     res.json(result);
   } catch (error) {
+    logger.error(`[SETTINGS] Error getting settings: ${error.message}`);
     res.status(500).json({ error: error.message });
   }
 };

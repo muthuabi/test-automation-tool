@@ -188,7 +188,7 @@ class ExecutionEngine {
       // Create page
       executionTracker.addLog(runId, 'Creating new browser page...', 'info');
       try {
-        page = await playwrightService.createPage(contextId);
+        page = await playwrightService.createPage(contextId, executionTracker, runId);
         executionTracker.addLog(runId, '✓ Page created successfully', 'info');
       } catch (error) {
         executionTracker.addLog(runId, `✗ Failed to create page: ${error.message}`, 'error');
@@ -433,7 +433,10 @@ class ExecutionEngine {
         page,
         vars,
         selectors,
-        parseInt(process.env.PLAYWRIGHT_TIMEOUT) || 30000
+        parseInt(process.env.PLAYWRIGHT_TIMEOUT) || 30000,
+        executionTracker,
+        runId,
+        func.name
       );
       const duration = Date.now() - startTime;
 

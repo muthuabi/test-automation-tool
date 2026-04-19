@@ -1,10 +1,14 @@
 const logger = require('../utils/logger');
 
 class FunctionExecutor {
-  async executeFunction(functionCode, page, vars = {}, selectors = {}) {
+  async executeFunction(functionCode, page, vars = {}, selectors = {}, executionTracker = null, runId = null, functionName = 'Function') {
     try {
       // Sanitize and validate selectors object
       const selectorsMap = this.formatSelectors(selectors);
+
+      if (executionTracker && runId) {
+        executionTracker.addLog(runId, `  ↓ Starting execution of: ${functionName}`, 'info');
+      }
 
       // Create a safe function that has access to page, vars, and selectors
       const fn = new Function('page', 'vars', 'selectors', `return (${functionCode})(page, vars, selectors)`);
@@ -12,6 +16,13 @@ class FunctionExecutor {
       const startTime = Date.now();
       const result = await fn(page, vars, selectorsMap);
       const duration = Date.now() - startTime;
+
+      if (executionTracker && runId) {
+        executionTracker.addLog(runId, `  ↑ ${functionName} completed in ${duration}ms`, 'info');
+        if (result.message) {
+          executionTracker.addLog(runId, `     Message: ${result.message}`, 'info');
+        }
+      }
 
       logger.log(`✓ Function executed successfully in ${duration}ms`);
 
@@ -24,6 +35,11 @@ class FunctionExecutor {
       };
     } catch (error) {
       const duration = Date.now() - (this.startTime || Date.now());
+      
+      if (executionTracker && runId) {
+        executionTracker.addLog(runId, `  ✗ ${functionName} failed: ${error.message}`, 'error');
+      }
+
       logger.error(`✗ Function execution error: ${error.message}`);
 
       return {
@@ -57,9 +73,9 @@ class FunctionExecutor {
     return selectorMap;
   }
 
-  async executeWithTimeout(functionCode, page, vars, selectors, timeout = 30000) {
+  async executeWithTimeout(functionCode, page, vars, selectors, timeout = 30000, executionTracker = null, runId = null, functionName = 'Function') {
     return Promise.race([
-      this.executeFunction(functionCode, page, vars, selectors),
+      this.executeFunction(functionCode, page, vars, selectors, executionTracker, runId, functionName),
       new Promise((_, reject) =>
         setTimeout(() => reject(new Error(`Function execution timeout after ${timeout}ms`)), timeout)
       ),
